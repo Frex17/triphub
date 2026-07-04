@@ -45,7 +45,7 @@
   .trip .loc { font-size:13px; color:#6b7280; }
   .trip .bdg { font-size:12px; font-weight:600; border-radius:999px; padding:3px 9px; }
   .bdg.ok { background:#e2f3e9; color:#177245; }
-  .bdg.over { background:#fdecec; color:#b3261e; }
+  .bdg.over { background:#faf3dd; color:#8a6d1a; }
   .bdg.na { background:#eceef2; color:#6b7280; }
 
   .empty { text-align:center; padding:56px 20px 30px; }
@@ -178,10 +178,18 @@
     </div>
 
     <div class="sect">
+      <div class="sh">📋 Riepilogo</div>
+      <div class="sb" id="recapBox"></div>
+    </div>
+
+    <div class="sect">
       <div class="sh">🚆 Spostamenti</div>
       <div class="sb">
         <div id="trList"></div>
-        <button class="btn ghost small" id="btnAddTr" style="margin-top:10px">+ Aggiungi spostamento</button>
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+          <button class="btn ghost small" id="btnAddTr">+ Aggiungi</button>
+          <button class="btn ghost small" id="btnImpFS">⬇️ Importa da FlightScan</button>
+        </div>
         <div class="links" id="trLinks"></div>
       </div>
     </div>
@@ -196,25 +204,17 @@
         </div>
         <div id="lodNightHint" class="hint hidden" style="margin-top:10px">Niente alloggio: si resta fuori e si prende il primo volo del mattino. Costo alloggio: 0 €.</div>
         <div id="lodFields">
-          <div class="grid2">
-            <div><label>Costo totale alloggio (€)</label><input type="number" id="lodTotal" inputmode="decimal" placeholder="0"></div>
+          <label>Budget alloggio (€ totali per il gruppo)</label>
+          <input type="number" id="lodBud" inputmode="decimal" placeholder="Es. 400">
+          <div class="hint" id="lodCalc" style="margin-top:8px"></div>
+          <div class="grid2" style="margin-top:4px">
+            <div><label>Costo effettivo prenotato (€)</label><input type="number" id="lodTotal" inputmode="decimal" placeholder="0"></div>
             <div><label>Notti</label><input type="number" id="lodNights" inputmode="numeric" placeholder="0"></div>
           </div>
         </div>
         <label>Note (dove, link, idee)</label>
         <textarea id="lodNote" rows="2" placeholder="Es. zona centro, ostello X, appartamento di Y..."></textarea>
         <div class="links" id="lodLinks"></div>
-      </div>
-    </div>
-
-    <div class="sect">
-      <div class="sh">💶 Budget</div>
-      <div class="sb">
-        <label>Soglia massima a persona (€)</label>
-        <input type="number" id="budCap" inputmode="decimal" placeholder="Es. 150">
-        <div id="extList" style="margin-top:6px"></div>
-        <button class="btn ghost small" id="btnAddExt" style="margin-top:10px">+ Aggiungi spesa extra</button>
-        <div class="bud" id="budBox"></div>
       </div>
     </div>
 
@@ -358,17 +358,14 @@ function refresh(){
   if(curId)renderTrip();else renderHome();
 }
 
-/* ================= budget calc ================= */
+/* ================= budget alloggio ================= */
 function num(v){const n=parseFloat(String(v==null?"":v).replace(",","."));return isFinite(n)?n:0;}
 function budgetOf(t){
   const nP=Math.max(1,(t.parts||[]).length);
-  const tr=(t.transports||[]).reduce((s,x)=>s+num(x.price),0);
-  const lodTot=(t.lodging&&t.lodging.mode==="night")?0:num(t.lodging&&t.lodging.total);
-  const lod=lodTot/nP;
-  const ext=((t.budget&&t.budget.extras)||[]).reduce((s,x)=>s+num(x.amt),0);
-  const tot=tr+lod+ext;
-  const cap=num(t.budget&&t.budget.cap);
-  return{tr,lod,ext,tot,cap,nP,over:cap>0&&tot>cap};
+  const lod=t.lodging||{};
+  const bud=(lod.mode==="night")?0:num(lod.bud);
+  const spent=(lod.mode==="night")?0:num(lod.total);
+  return{bud,spent,nP,night:lod.mode==="night",over:bud>0&&spent>bud};
 }
 
 /* ================= viste ================= */
@@ -386,9 +383,13 @@ function renderHome(){
   document.getElementById("emptyState").classList.toggle("hidden",active.length>0);
   list.innerHTML=active.map(t=>{
     const b=budgetOf(t);
-    let bdg='<span class="bdg na">budget —</span>';
-    if(b.cap>0)bdg=b.over?('<span class="bdg over">'+eur(b.tot)+' / '+eur(b.cap)+'</span>')
-                        :('<span class="bdg ok">'+eur(b.tot)+' / '+eur(b.cap)+'</span>');
+    let bdg='<span class="bdg na">alloggio —</span>';
+    if(b.night)bdg='<span class="bdg ok">🌙 notte fuori</span>';
+    else if(b.bud>0){
+      if(b.spent>0)bdg=b.over?('<span class="bdg over">🛏 '+eur(b.spent)+' / '+eur(b.bud)+'</span>')
+                            :('<span class="bdg ok">🛏 '+eur(b.spent)+' / '+eur(b.bud)+'</span>');
+      else bdg='<span class="bdg ok">🛏 budget '+eur(b.bud)+'</span>';
+    }
     return '<a class="trip" href="#" data-id="'+t.id+'">'
       +'<div class="t1"><span class="nm">'+esc(t.name||"(senza nome)")+'</span><span class="dt">'+pretty(t.start)+' → '+pretty(t.end)+'</span></div>'
       +'<div class="t2"><span class="loc">📍 '+esc(t.loc||"—")+' · '+(t.parts||[]).length+' 👥</span>'+bdg+'</div></a>';
@@ -450,17 +451,13 @@ function renderTrip(){
   const night=lod.mode==="night";
   document.getElementById("lodNightHint").classList.toggle("hidden",!night);
   document.getElementById("lodFields").classList.toggle("hidden",night);
-  const lt=document.getElementById("lodTotal"),ln=document.getElementById("lodNights"),lo=document.getElementById("lodNote");
-  lt.value=lod.total||"";ln.value=lod.nights||"";lo.value=lod.note||"";
-  lt.oninput=()=>{lod.total=lt.value;touch(t);renderBudget(t);};
+  const lt=document.getElementById("lodTotal"),ln=document.getElementById("lodNights"),lo=document.getElementById("lodNote"),lb=document.getElementById("lodBud");
+  lt.value=lod.total||"";ln.value=lod.nights||"";lo.value=lod.note||"";lb.value=lod.bud||"";
+  lt.oninput=()=>{lod.total=lt.value;touch(t);renderLodCalc(t);renderRecap(t);};
   ln.oninput=()=>{lod.nights=ln.value;touch(t);};
-  lo.oninput=()=>{lod.note=lo.value;touch(t);};
-  const nAd=Math.max(1,(t.parts||[]).length);
-  const ci=t.start,co=t.end;
-  document.getElementById("lodLinks").innerHTML=night?
-    '<a href="/flightscan/">✈️ Trova il primo volo del mattino</a>':
-    ('<a href="https://www.booking.com/searchresults.it.html?ss='+q+'&checkin='+ci+'&checkout='+co+'&group_adults='+nAd+'" target="_blank" rel="noopener">🏨 Cerca su Booking ('+nAd+' pers.)</a>'
-    +'<a href="https://www.airbnb.it/s/'+q+'/homes?checkin='+ci+'&checkout='+co+'&adults='+nAd+'" target="_blank" rel="noopener">🏠 Airbnb</a>');
+  lo.oninput=()=>{lod.note=lo.value;touch(t);renderRecap(t);};
+  lb.oninput=()=>{lod.bud=lb.value;touch(t);renderLodCalc(t);renderRecap(t);};
+  renderLodCalc(t);
   const oneNight=t.start&&t.end&&daysBetween(t.start,t.end)===1;
   if(oneNight&&lod.mode!=="night"){
     document.getElementById("lodNightHint").classList.remove("hidden");
@@ -469,34 +466,107 @@ function renderTrip(){
     document.getElementById("lodNightHint").textContent="Niente alloggio: si resta fuori e si prende il primo volo del mattino. Costo alloggio: 0 €.";
   }
 
-  /* budget */
-  const bud=t.budget||(t.budget={cap:"",extras:[]});
-  const bc=document.getElementById("budCap");
-  bc.value=bud.cap||"";
-  bc.oninput=()=>{bud.cap=bc.value;touch(t);renderBudget(t);};
-  document.getElementById("extList").innerHTML=(bud.extras||[]).map(x=>
-    '<div class="row"><div class="ic">💸</div><div class="rx"><b>'+esc(x.name||"Extra")+'</b></div>'
-    +'<div class="pr">'+eur(num(x.amt))+' pp</div><button class="del" data-xdel="'+x.id+'">✕</button></div>'
-  ).join("");
-  document.querySelectorAll("#extList [data-xdel]").forEach(b=>b.onclick=()=>{
-    bud.extras=bud.extras.filter(x=>x.id!==b.dataset.xdel);touch(t);renderTrip();
-  });
-  renderBudget(t);
+  renderRecap(t);
   document.getElementById("dFoot").textContent="Aggiornato: "+(t.updated_at||"").slice(0,16).replace("T"," ");
 }
 
-function renderBudget(t){
-  const b=budgetOf(t);
-  let html='<div class="line"><span>Spostamenti (a persona)</span><b>'+eur(b.tr)+'</b></div>'
-    +'<div class="line"><span>Alloggio ('+eur((t.lodging&&t.lodging.mode==="night")?0:num(t.lodging&&t.lodging.total))+' ÷ '+b.nP+')</span><b>'+eur(b.lod)+'</b></div>'
-    +'<div class="line"><span>Extra (a persona)</span><b>'+eur(b.ext)+'</b></div>'
-    +'<div class="line" style="font-size:15px"><span><b>Totale a persona</b></span><b>'+eur(b.tot)+'</b></div>';
-  if(b.cap>0){
-    const pct=Math.min(100,Math.round(b.tot/b.cap*100));
-    html+='<div class="bar"><i style="width:'+pct+'%" class="'+(b.over?"over":"")+'"></i></div>'
-      +'<div class="verdict '+(b.over?"over":"ok")+'">'+(b.over?("Fuori budget di "+eur(b.tot-b.cap)):("Dentro la soglia: restano "+eur(b.cap-b.tot)))+'</div>';
+function renderLodCalc(t){
+  const lod=t.lodging||{},calc=document.getElementById("lodCalc"),links=document.getElementById("lodLinks");
+  const q=encodeURIComponent(t.loc||"");
+  if(lod.mode==="night"){
+    calc.innerHTML="";
+    links.innerHTML='<a href="/flightscan/">✈️ Trova il primo volo del mattino</a>';
+    return;
   }
-  document.getElementById("budBox").innerHTML=html;
+  const nP=Math.max(1,(t.parts||[]).length);
+  const nights=num(lod.nights)>0?num(lod.nights):Math.max(1,(t.start&&t.end)?daysBetween(t.start,t.end):1);
+  const bud=num(lod.bud),spent=num(lod.total);
+  let html="";
+  if(bud>0){
+    const perNight=bud/nights, ppn=perNight/nP;
+    let fascia;
+    if(ppn<15)fascia="molto stretta: quasi solo ostelli — o meglio la Notte fuori";
+    else if(ppn<30)fascia="fattibile con ostelli e appartamenti condivisi";
+    else if(ppn<60)fascia="fascia media: hotel semplici e appartamenti";
+    else fascia="ampia: hotel comodi senza problemi";
+    html+=eur(bud)+" ÷ "+nights+" notti = <b>"+eur(perNight)+"/notte</b> per il gruppo ("+eur(ppn)+" a testa): fascia "+fascia+".";
+    html+="<br>Il confronto vero lo fai con un tap: il link Booking qui sotto è già filtrato a max "+eur(Math.ceil(perNight))+"/notte. Se esce vuoto o con poca scelta, per quella zona il budget va alzato.";
+    if(spent>0){
+      html+=(spent<=bud)
+        ?('<br><span style="color:#177245;font-weight:700">✅ Prenotato a '+eur(spent)+": dentro la cifra guida, risparmiati "+eur(bud-spent)+" ("+eur((bud-spent)/nP)+" a testa).</span>")
+        :('<br><span style="color:#8a6d1a;font-weight:600">Prenotato a '+eur(spent)+", un po' sopra la cifra guida (+"+eur(spent-bud)+"). Se non c'era di meglio, va benissimo così.</span>");
+    }
+    calc.innerHTML=html;
+    links.innerHTML='<a href="https://www.booking.com/searchresults.it.html?ss='+q+'&checkin='+t.start+'&checkout='+t.end+'&group_adults='+nP+'&nflt=price%253DEUR-1-'+Math.ceil(perNight)+'-1" target="_blank" rel="noopener">🏨 Booking ≤ '+eur(Math.ceil(perNight))+'/notte</a>'
+      +'<a href="https://www.airbnb.it/s/'+q+'/homes?checkin='+t.start+'&checkout='+t.end+'&adults='+nP+'&price_max='+Math.ceil(bud)+'" target="_blank" rel="noopener">🏠 Airbnb ≤ '+eur(Math.ceil(bud))+' tot</a>';
+  }else{
+    calc.innerHTML="Imposta il budget alloggio: calcolo la spesa a notte, ti dico in che fascia siete e ti preparo la ricerca già filtrata.";
+    links.innerHTML='<a href="https://www.booking.com/searchresults.it.html?ss='+q+'&checkin='+t.start+'&checkout='+t.end+'&group_adults='+nP+'" target="_blank" rel="noopener">🏨 Cerca su Booking ('+nP+' pers.)</a>'
+      +'<a href="https://www.airbnb.it/s/'+q+'/homes?checkin='+t.start+'&checkout='+t.end+'&adults='+nP+'" target="_blank" rel="noopener">🏠 Airbnb</a>';
+  }
+}
+
+
+function renderRecap(t){
+  const icons={flight:"✈️",train:"🚆",bus:"🚌",car:"🚗"};
+  const nP=Math.max(1,(t.parts||[]).length);
+  const lod=t.lodging||{},bud=num(lod.bud),spent=num(lod.total);
+  let html="";
+  const trs=(t.transports||[]);
+  if(trs.length){
+    html+=trs.map(x=>'<div style="font-size:13.5px;padding:5px 0">'+(icons[x.type]||"🧭")+" "+esc(x.from||"?")+" → "+esc(x.to||"?")+" · "+pretty(x.date)+(x.time?(" "+esc(x.time)):"")+(x.note?(" · "+esc(x.note)):"")+'</div>').join("");
+  }else{
+    html+='<div class="hint">Nessuno spostamento ancora.</div>';
+  }
+  let lodLine;
+  if(lod.mode==="night")lodLine="🌙 Notte fuori — 0 €";
+  else{
+    const dove=(lod.note||"").split("\n")[0].trim()||t.loc||"da definire";
+    lodLine="🛏 "+esc(dove)+" — "+(spent>0?eur(spent):(bud>0?("budget "+eur(bud)):"da definire"));
+  }
+  html+='<div style="border-top:1px solid #f0f1f4;margin-top:6px;padding-top:8px;font-size:13.5px">'+lodLine+'</div>';
+  const tot=(lod.mode==="night")?0:(spent>0?spent:bud);
+  if(tot>0||lod.mode==="night"){
+    const lbl=(spent>0||lod.mode==="night")?"":" (previsti)";
+    html+='<div style="display:flex;justify-content:space-between;font-size:14.5px;margin-top:8px"><b>Alloggio totale'+lbl+'</b><b>'+eur(tot)+'</b></div>'
+        +'<div style="display:flex;justify-content:space-between;font-size:14.5px;color:#374151"><span>A testa ('+nP+' pers.)</span><b>'+eur(tot/nP)+'</b></div>';
+  }
+  document.getElementById("recapBox").innerHTML=html;
+}
+
+async function fsImport(t){
+  if(!sbReady){openModal('<h3>Importa da FlightScan</h3><p class="hint" style="margin-top:8px">Sync non attiva al momento: riprova tra qualche secondo.</p><div class="mrow"><button class="btn ghost" id="iCancel">Chiudi</button></div>');mBody.querySelector("#iCancel").onclick=closeModal;return;}
+  openModal('<h3>Importa da FlightScan</h3><p class="hint" style="margin-top:8px">Carico i viaggi salvati…</p>');
+  let rows=[];
+  try{
+    const res=await sb.from("flightscan_trips").select("*").eq("deleted",false).order("updated_at",{ascending:false}).limit(20);
+    rows=res.data||[];
+  }catch(e){}
+  if(!rows.length){
+    mBody.innerHTML='<h3>Importa da FlightScan</h3><p class="hint" style="margin-top:8px">Nessun viaggio salvato in FlightScan. Cerca i voli lì, tocca ★ Salva, poi torna qui.</p><div class="mrow"><button class="btn ghost" id="iCancel">Chiudi</button></div>';
+    mBody.querySelector("#iCancel").onclick=closeModal;return;
+  }
+  mBody.innerHTML='<h3>Importa da FlightScan</h3><p class="hint" style="margin-top:6px">Scegli il viaggio salvato: i suoi voli finiscono negli Spostamenti.</p>'
+    +'<div class="plist" style="margin-top:10px">'+rows.map((r,i)=>
+      '<button type="button" class="prow" data-i="'+i+'"><span style="text-align:left;min-width:0"><b style="display:block;font-size:14px">'+esc(r.name||"(senza nome)")+'</b>'
+      +'<span style="font-size:12px;color:#6b7280">'+pretty(r.date_out)+(r.date_ret?(" → "+pretty(r.date_ret)):"")+' · '+((r.flights||[]).length)+' voli</span></span><span class="ck">→</span></button>').join("")
+    +'</div><div class="mrow"><button class="btn ghost" id="iCancel">Annulla</button></div>';
+  mBody.querySelector("#iCancel").onclick=closeModal;
+  mBody.querySelectorAll(".prow").forEach(b=>b.onclick=()=>{
+    const r=rows[Number(b.dataset.i)];
+    t.transports=t.transports||[];
+    let added=0;
+    (r.flights||[]).forEach(f=>{
+      const date=(f.dir==="rit")?(r.date_ret||t.end):(r.date_out||t.start);
+      const dup=t.transports.some(x=>x.type==="flight"&&x.from===f.from&&x.to===f.to&&x.date===date&&x.time===(f.dep||""));
+      if(dup)return;
+      t.transports.push({id:"x_"+Date.now()+"_"+added,type:"flight",from:f.from||"",to:f.to||"",
+        date:date,time:f.dep||"",price:"",note:[(f.fn||""),(f.via?("via "+f.via):"")].filter(Boolean).join(" ")});
+      added++;
+    });
+    t.transports.sort((a,b)=>((a.date||"")+(a.time||"")).localeCompare((b.date||"")+(b.time||"")));
+    touch(t);closeModal();renderTrip();
+  });
 }
 
 /* ================= modali ================= */
@@ -561,20 +631,6 @@ function transportForm(t){
   };
 }
 
-function extraForm(t){
-  openModal(
-    '<h3>Spesa extra</h3>'
-    +'<label>Descrizione</label><input id="eName" placeholder="Es. biglietti festival">'
-    +'<label>Importo a persona (€)</label><input type="number" id="eAmt" inputmode="decimal" placeholder="0">'
-    +'<div class="mrow"><button class="btn ghost" id="eCancel">Annulla</button><button class="btn primary" id="eSave">Aggiungi</button></div>'
-  );
-  mBody.querySelector("#eCancel").onclick=closeModal;
-  mBody.querySelector("#eSave").onclick=()=>{
-    t.budget.extras=t.budget.extras||[];
-    t.budget.extras.push({id:"e_"+Date.now(),name:mBody.querySelector("#eName").value.trim(),amt:mBody.querySelector("#eAmt").value});
-    touch(t);closeModal();renderTrip();
-  };
-}
 
 /* ================= init ================= */
 function init(){
@@ -590,7 +646,7 @@ function init(){
     curId=null;renderHome();
   };
   document.getElementById("btnAddTr").onclick=()=>{const t=cur();if(t)transportForm(t);};
-  document.getElementById("btnAddExt").onclick=()=>{const t=cur();if(t)extraForm(t);};
+  document.getElementById("btnImpFS").onclick=()=>{const t=cur();if(t)fsImport(t);};
   renderHome();
   initSupabase();
 }
