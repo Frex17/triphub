@@ -95,9 +95,15 @@
 
   /* forms */
   label { display:block; font-size:12px; font-weight:600; color:#6b7280; margin:12px 0 5px; }
-  input,select,textarea { width:100%; border:1.5px solid #d8dce3; border-radius:10px; padding:11px 12px; font-size:15px; font-family:inherit; background:#fff; color:#1a1d24; }
+  input,select,textarea { width:100%; min-width:0; max-width:100%; border:1.5px solid #d8dce3; border-radius:10px; padding:11px 12px; font-size:15px; font-family:inherit; background:#fff; color:#1a1d24; }
   input:focus,select:focus,textarea:focus { outline:none; border-color:#1a1d24; }
   .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .grid2 > div { min-width:0; }
+  .plist { margin-top:6px; border:1.5px solid #e5e7eb; border-radius:12px; overflow:hidden; }
+  .prow { display:flex; align-items:center; justify-content:space-between; width:100%; background:#fff; border:0; border-top:1px solid #f0f1f4; padding:12px 14px; font-size:15px; font-weight:600; color:#1a1d24; cursor:pointer; font-family:inherit; }
+  .prow:first-child { border-top:0; }
+  .prow .ck { width:22px; height:22px; border-radius:50%; border:1.5px solid #cdd2da; display:flex; align-items:center; justify-content:center; font-size:13px; color:transparent; flex-shrink:0; }
+  .prow.on .ck { background:#1a1d24; border-color:#1a1d24; color:#fff; }
   .chips { display:flex; flex-wrap:wrap; gap:8px; margin-top:6px; }
   .chip { border:1.5px solid #d8dce3; background:#fff; border-radius:999px; padding:8px 13px; font-size:13.5px; font-weight:600; cursor:pointer; color:#1a1d24; }
   .chip.on { background:#1a1d24; color:#fff; border-color:#1a1d24; }
@@ -119,7 +125,7 @@
 
   .footer { text-align:center; color:#9ca3af; font-size:12px; padding:26px 0 6px; }
   .hidden { display:none !important; }
-  dialog#modal { border:0; border-radius:16px; padding:0; width:min(92vw,420px); max-height:85vh; }
+  dialog#modal { border:0; border-radius:16px; padding:0; width:min(92vw,420px); max-height:82vh; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); margin:0; }
   dialog#modal::backdrop { background:rgba(15,20,30,.45); }
   dialog#modal .mi { padding:18px; overflow-y:auto; max-height:85vh; }
   dialog#modal h3 { font-size:17px; margin-bottom:2px; }
@@ -172,15 +178,6 @@
     </div>
 
     <div class="sect">
-      <div class="sh">👥 Crew e turni</div>
-      <div class="sb">
-        <div class="duty" id="dutyGrid"></div>
-        <div class="hint" id="dutyHint" style="margin-top:10px"></div>
-        <div class="links"><a href="/swap/">🔄 Organizza gli swap in Swap Planner</a></div>
-      </div>
-    </div>
-
-    <div class="sect">
       <div class="sh">🚆 Spostamenti</div>
       <div class="sb">
         <div id="trList"></div>
@@ -218,6 +215,14 @@
         <div id="extList" style="margin-top:6px"></div>
         <button class="btn ghost small" id="btnAddExt" style="margin-top:10px">+ Aggiungi spesa extra</button>
         <div class="bud" id="budBox"></div>
+      </div>
+    </div>
+
+    <div class="sect">
+      <div class="sh">👥 Turni crew</div>
+      <div class="sb">
+        <div class="hint" id="dutySum"></div>
+        <div class="links"><a href="/swap/">🔄 Vedi Swap Planner</a></div>
       </div>
     </div>
     <div class="footer" id="dFoot"></div>
@@ -391,13 +396,6 @@ function renderHome(){
   list.querySelectorAll(".trip").forEach(a=>a.onclick=e=>{e.preventDefault();curId=a.dataset.id;renderTrip();});
 }
 
-function dutyCell(code,day){
-  const st=dutyFor(code,day);
-  if(!st)return'<span class="cell na">—</span>';
-  if(st.type==="off")return'<span class="cell off">OFF</span>';
-  const lbl=(st.type==="early"?"E":"L")+st.day;
-  return'<span class="cell work">'+lbl+'</span>';
-}
 function eventDays(t){
   const out=[];if(!t.start||!t.end)return out;
   const n=Math.max(0,Math.min(30,daysBetween(t.start,t.end)));
@@ -412,22 +410,17 @@ function renderTrip(){
   const days=eventDays(t);
   document.getElementById("dMeta").textContent="📍 "+(t.loc||"—")+" · "+pretty(t.start)+" → "+pretty(t.end)+" · "+(t.parts||[]).map(partLabel).join(", ");
 
-  /* turni */
-  let g='<table><tr><th style="text-align:left">Chi</th>'+days.map(d=>'<th>'+weekday(d)+'<br>'+pretty(d)+'</th>').join("")+'</tr>';
-  (t.parts||[]).forEach(p=>{
-    g+='<tr><td class="nm">'+esc(partLabel(p))+'</td>'+days.map(d=>'<td>'+dutyCell(p,d)+'</td>').join("")+'</tr>';
-  });
-  g+='</table>';
-  document.getElementById("dutyGrid").innerHTML=g;
-  const workers=[];
+  /* turni: riepilogo compatto */
+  const lines=[];
   (t.parts||[]).forEach(p=>{
     if(!CREW_DB[p])return;
     const wd=days.filter(d=>{const s=dutyFor(p,d);return s&&s.type!=="off";});
-    if(wd.length)workers.push(partLabel(p)+" lavora "+wd.map(pretty).join(", "));
+    if(wd.length)lines.push("⚠️ "+partLabel(p)+" lavora "+wd.map(pretty).join(", "));
+    else lines.push("✅ "+partLabel(p)+" è OFF tutti i giorni");
   });
-  document.getElementById("dutyHint").innerHTML=workers.length
-    ?("⚠️ Servono swap o cambi: "+esc(workers.join(" · ")))
-    :"✅ Nei giorni del viaggio sono tutti OFF (salvo cambi roster).";
+  document.getElementById("dutySum").innerHTML=lines.length
+    ?lines.map(esc).join("<br>")
+    :"Nessun membro crew tra i partecipanti.";
 
   /* spostamenti */
   const icons={flight:"✈️",train:"🚆",bus:"🚌",car:"🚗"};
@@ -513,8 +506,8 @@ function closeModal(){modal.close();}
 modal.addEventListener("click",e=>{if(e.target===modal)closeModal();});
 
 function tripForm(t,isNew){
-  const crewChips=Object.keys(CREW_DB).map(c=>
-    '<button type="button" class="chip'+((t.parts||[]).includes(c)?" on":"")+'" data-c="'+c+'">'+CREW_DB[c].name+'</button>').join("");
+  const crewRows=Object.keys(CREW_DB).map(c=>
+    '<button type="button" class="prow'+((t.parts||[]).includes(c)?" on":"")+'" data-c="'+c+'">'+CREW_DB[c].name+'<span class="ck">✓</span></button>').join("");
   const customs=(t.parts||[]).filter(p=>!CREW_DB[p]);
   openModal(
     '<h3>'+(isNew?"Nuovo viaggio":"Modifica viaggio")+'</h3>'
@@ -522,12 +515,12 @@ function tripForm(t,isNew){
     +'<label>Luogo / città</label><input id="fLoc" value="'+esc(t.loc)+'" placeholder="Es. Madrid">'
     +'<div class="grid2"><div><label>Dal</label><input type="date" id="fStart" value="'+esc(t.start)+'"></div>'
     +'<div><label>Al</label><input type="date" id="fEnd" value="'+esc(t.end)+'"></div></div>'
-    +'<label>Chi viene</label><div class="chips" id="fCrew">'+crewChips+'</div>'
+    +'<label>Chi viene</label><div class="plist" id="fCrew">'+crewRows+'</div>'
     +'<label>Altre persone (separate da virgola)</label><input id="fCustom" value="'+esc(customs.join(", "))+'" placeholder="Es. Marco, Giulia">'
     +'<div class="mrow"><button class="btn ghost" id="fCancel">Annulla</button><button class="btn primary" id="fSave">Salva</button></div>'
   );
   const sel=new Set((t.parts||[]).filter(p=>CREW_DB[p]));
-  mBody.querySelectorAll("#fCrew .chip").forEach(b=>b.onclick=()=>{
+  mBody.querySelectorAll("#fCrew .prow").forEach(b=>b.onclick=()=>{
     const c=b.dataset.c;if(sel.has(c))sel.delete(c);else sel.add(c);
     b.classList.toggle("on",sel.has(c));
   });
