@@ -301,10 +301,20 @@
       <button class="hamb" id="hambBtn" aria-label="Menu"><span></span><span></span><span></span></button>
     </div>
   </div>
-  <p id="evLabel">—</p>
+  <p id="evLabel" style="display:none">—</p>
 </header>
 
-<div class="filters">
+<div id="welcome" style="text-align:center;padding:80px 24px 40px;">
+  <div style="font-size:44px;line-height:1">✈</div>
+  <h2 style="margin:18px 0 8px;font-size:22px;color:var(--ink)">Pronti per un nuovo planning</h2>
+  <p style="color:var(--muted);font-size:14.5px;max-width:300px;margin:0 auto 24px;line-height:1.5">Crea un nuovo gruppo o apri uno di quelli esistenti dal menu.</p>
+  <div style="display:flex;flex-direction:column;gap:10px;max-width:240px;margin:0 auto">
+    <button id="welcomeNew" style="background:var(--ink);color:var(--paper);border:0;border-radius:12px;padding:13px 22px;font-size:15px;font-weight:600;cursor:pointer">+ Nuovo gruppo</button>
+    <button id="welcomeMenu" style="background:transparent;color:var(--ink);border:1.5px solid var(--muted);border-radius:12px;padding:12px 22px;font-size:15px;font-weight:600;cursor:pointer">I miei gruppi</button>
+  </div>
+</div>
+
+<div class="filters" style="display:none">
   <div class="seg">
     <button data-view="day" class="on">Per giorno</button>
     <button data-view="person">Per persona</button>
@@ -318,7 +328,7 @@
   </div>
 </div>
 
-<div class="wrap">
+<div class="wrap" style="display:none">
   <div id="recap" class="recap" style="display:none"></div>
   <div id="plan"></div>
 
@@ -719,7 +729,7 @@ function mergeEvents(rows){
         const wasCur=state.cur===r.id;
         state.events.splice(i,1);changed=true;
         if(!state.events.length)state.events=[Object.assign({},FIRST_EVENT)];
-        if(wasCur)switchEvent(state.events[0].id);
+        if(wasCur){state.cur=null;saveState();updateMode();}
       }
       return;
     }
@@ -753,7 +763,7 @@ async function initEventsSync(){
           const wasCur=state.cur===id;
           state.events=state.events.filter(x=>x.id!==id);
           if(!state.events.length)state.events=[Object.assign({},FIRST_EVENT)];
-          if(wasCur)switchEvent(state.events[0].id);
+          if(wasCur){state.cur=null;saveState();updateMode();}
         }else mergeEvents([payload.new]);   // gestisce sia update sia lapidi (deleted:true)
         saveState();
         const editingFocused=state.ui.editGroup&&document.activeElement&&document.activeElement.id==="evName";
@@ -799,7 +809,7 @@ function deleteGroup(id){
   try{localStorage.removeItem("swapplanner.dec7."+id);}catch(err){}
   if(sbReady){try{sb.from("swap_decisions").delete().eq("event",id);}catch(err){}pushEvent(id,true);}
   saveState();
-  if(state.cur===id)switchEvent(state.events[0].id);
+  if(state.cur===id){state.cur=null;saveState();updateMode();renderGroups();}
   else{renderGroups();renderFilters();renderPlan();}
 }
 function groupEditorHTML(e){
@@ -902,9 +912,21 @@ function renderFilters(){
 }
 
 /* ---------- eventi ---------- */
+function updateMode(){
+  const open=!!(state.cur&&state.events.some(e=>e.id===state.cur));
+  const w=document.getElementById("welcome");
+  const f=document.querySelector(".filters");
+  const wr=document.querySelector(".wrap");
+  const l=document.getElementById("evLabel");
+  if(w)w.style.display=open?"none":"block";
+  if(f)f.style.display=open?"":"none";
+  if(wr)wr.style.display=open?"":"none";
+  if(l)l.style.display=open?"":"none";
+}
 function switchEvent(id){
   if(!state.events.some(e=>e.id===id))return;
   state.cur=id;state.ui.day="all";saveState();loadDec();
+  updateMode();
   fillEventInputs();renderFilters();renderPlan();renderCalib();
   if(sbReady)connectEvent();
 }
@@ -1084,7 +1106,7 @@ function renderRecap(){
 /* ---------- piano ---------- */
 function renderPlan(){
   const e=ev();
-  document.getElementById("evLabel").textContent=e.name+" — "+pretty(e.start)+" → "+pretty(e.end);
+  if(state.cur)document.getElementById("evLabel").textContent=e.name+" — "+pretty(e.start)+" → "+pretty(e.end);
   renderRecap();
   const box=document.getElementById("plan");
   let days=eventDays();
@@ -1267,7 +1289,11 @@ function copyRecap(){
 
 /* ---------- init ---------- */
 function init(){
-  loadRoster();loadState();loadDec();
+  loadRoster();loadState();
+  state.cur=null;               // all'apertura nessun gruppo: schermata di benvenuto
+  loadDec();
+  document.getElementById("welcomeMenu").onclick=openDrawer;
+  document.getElementById("welcomeNew").onclick=()=>{openDrawer();addNewEvent();};
   document.getElementById("addEvent").onclick=addNewEvent;
   document.getElementById("crewReset").onclick=()=>{
     if(!confirm("Ripristinare il roster di base? Le modifiche fatte verranno perse."))return;
@@ -1283,6 +1309,7 @@ function init(){
   document.getElementById("scrim").onclick=closeDrawer;
   applyTheme();
   renderCrew();renderCalib();renderSwapTables();renderFilters();renderPlan();
+  updateMode();
   initSupabase();
 }
 init();
