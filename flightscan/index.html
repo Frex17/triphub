@@ -483,10 +483,13 @@ async function saveTrip(){
   var t=currentTrip(); TRIP_ID=t.id;
   try{
     var r=await fetch(SB_TRIPS,{method:"POST",headers:sbHeaders({"Content-Type":"application/json",Prefer:"resolution=merge-duplicates,return=minimal"}),body:JSON.stringify(t)});
-    if(!r.ok) throw new Error("HTTP "+r.status);
+    if(!r.ok){
+      var r2=await fetch(SB_TRIPS+"?id=eq."+encodeURIComponent(t.id),{method:"PATCH",headers:sbHeaders({"Content-Type":"application/json"}),body:JSON.stringify(t)});
+      if(!r2.ok) throw new Error("HTTP "+r.status+"/"+r2.status);
+    }
     flash("Viaggio salvato");
     openTrips();
-  }catch(e){ flash("Salvataggio non riuscito"); }
+  }catch(e){ flash("Salvataggio non riuscito ("+(e&&e.message?e.message:"errore")+")"); }
 }
 
 function loadTripIdx(i){ var t=TRIPS[i]; if(t) loadTrip(t); }
