@@ -28,21 +28,68 @@
   .sync.on { color:#177245; background:#e2f3e9; }
   .sync.on .d { background:#2fbf71; }
 
-  /* launcher tiles */
-  .tiles { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-  .tile { display:flex; flex-direction:column; justify-content:space-between; gap:18px; text-align:left;
-    background:#fff; border:1px solid #e5e7eb; border-radius:18px; padding:18px 16px; min-height:128px;
-    text-decoration:none; color:inherit; cursor:pointer; font-family:inherit; font-size:15px;
-    box-shadow:0 1px 2px rgba(15,20,30,.04); transition:transform .08s ease; }
-  .tile:active { transform:scale(.97); }
-  .tile .tico { font-size:26px; }
-  .tile b { display:block; font-size:16px; }
-  .tile i { display:block; font-style:normal; font-size:12px; color:#6b7280; margin-top:2px; }
-  .tile.main { grid-column:1/-1; min-height:120px; background:#1a1d24; color:#fff; border-color:#1a1d24;
-    background-image:radial-gradient(120% 160% at 100% 0%, #2c3140 0%, #1a1d24 55%); }
-  .tile.main i { color:#aeb4c0; }
-  .tile.main .tico { font-size:30px; }
+  /* launcher */
+  .lhead { position:relative; text-align:center; padding:26px 0 6px; }
+  .lhead h1 { font-size:28px; }
+  .lhead .sub { color:#6b7280; font-size:13.5px; margin-top:3px; }
+  .lset { position:absolute; right:0; top:22px; }
+  .tiles { --d:min(88vw,370px); --ts:min(31vw,124px); --r:calc((var(--d) - var(--ts))/2);
+    position:relative; width:var(--d); height:var(--d); margin:28px auto 4px; }
+  .orbit { position:absolute; inset:0; animation:orb 22s linear infinite; }
+  .tile { position:absolute; left:50%; top:50%; width:var(--ts); height:var(--ts);
+    margin:calc(var(--ts)/-2) 0 0 calc(var(--ts)/-2);
+    transform:rotate(var(--a)) translateY(calc(var(--r)*-1));
+    background:none; border:0; padding:0; cursor:pointer; display:block;
+    text-decoration:none; color:inherit; font-family:inherit; -webkit-tap-highlight-color:transparent; }
+  .t1 { --a:0deg; } .t2 { --a:120deg; } .t3 { --a:240deg; }
+  .facebox { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
+    border-radius:20px; background:#fff; border:1px solid #e5e7eb; box-shadow:0 2px 8px rgba(15,20,30,.06);
+    animation:cnt 22s linear infinite; transition:background .12s, color .12s, border-color .12s; }
+  @keyframes orb { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
+  @keyframes cnt { from { transform:rotate(calc(var(--a) * -1)); } to { transform:rotate(calc(-360deg - var(--a))); } }
+  body.paused .orbit, body.paused .facebox { animation-play-state:paused; }
+  .facebox .tico { font-size:27px; }
+  .facebox b { font-size:14px; }
+  .facebox i { font-style:normal; font-size:11px; color:#6b7280; }
+  .tile:active .facebox { background:#1a1d24; border-color:#1a1d24; color:#fff; }
+  .tile:active .facebox i { color:#c3c9d4; }
+  body[data-theme="dark"] .tile:active .facebox { background:#eef1f5; border-color:#eef1f5; color:#12151c; }
+  body[data-theme="dark"] .tile:active .facebox i { color:#3c4350; }
+
   h1 .sync { padding:0; background:none; margin-left:9px; vertical-align:middle; }
+
+  /* ============ TEMA SCURO ============ */
+  body[data-theme="dark"] { background:#12151c; color:#eef1f5; }
+  body[data-theme="dark"] .sub, body[data-theme="dark"] .hint, body[data-theme="dark"] label,
+  body[data-theme="dark"] .lhead .sub, body[data-theme="dark"] .facebox i,
+  body[data-theme="dark"] .trip .dt, body[data-theme="dark"] .trip .loc,
+  body[data-theme="dark"] .row .rx span, body[data-theme="dark"] .footer { color:#9aa3b2; }
+  body[data-theme="dark"] .facebox, body[data-theme="dark"] .sect, body[data-theme="dark"] .card,
+  body[data-theme="dark"] .trip, body[data-theme="dark"] .apps a { background:#1c2029; border-color:#2a2f3a; box-shadow:none; }
+  body[data-theme="dark"] .drawer { background:#171b22; }
+  body[data-theme="dark"] input, body[data-theme="dark"] select, body[data-theme="dark"] textarea
+    { background:#12151c; border-color:#39404e; color:#eef1f5; }
+  body[data-theme="dark"] input:focus, body[data-theme="dark"] select:focus, body[data-theme="dark"] textarea:focus { border-color:#8fa3c8; }
+  body[data-theme="dark"] .btn.primary { background:#eef1f5; color:#12151c; }
+  body[data-theme="dark"] .btn.ghost, body[data-theme="dark"] .back { border-color:#3a4150; color:#eef1f5; background:transparent; }
+  body[data-theme="dark"] .btn.danger { background:#3a2024; color:#ff9a94; }
+  body[data-theme="dark"] .hamb2 { background:transparent; border-color:#3a4150; }
+  body[data-theme="dark"] .hamb2 span { background:#eef1f5; }
+  body[data-theme="dark"] .prow { background:#1c2029; border-color:#2a2f3a; color:#eef1f5; }
+  body[data-theme="dark"] .prow .ck { border-color:#4a5261; }
+  body[data-theme="dark"] .prow.on .ck { background:#eef1f5; border-color:#eef1f5; color:#12151c; }
+  body[data-theme="dark"] .plist { border-color:#2a2f3a; }
+  body[data-theme="dark"] .seg { background:#1c2029; }
+  body[data-theme="dark"] .seg button { color:#9aa3b2; }
+  body[data-theme="dark"] .seg button.on { background:#2b313d; color:#eef1f5; box-shadow:none; }
+  body[data-theme="dark"] .links a { background:#242a35; color:#eef1f5; }
+  body[data-theme="dark"] dialog#modal { background:#1c2029; color:#eef1f5; }
+  body[data-theme="dark"] .row { border-color:#2a2f3a; }
+  body[data-theme="dark"] .bdg.na { background:#242a35; color:#9aa3b2; }
+  body[data-theme="dark"] .bdg.ok { background:#15301f; color:#63d99a; }
+  body[data-theme="dark"] .bdg.over { background:#332a12; color:#e3bd63; }
+  body[data-theme="dark"] .drawer .dclose { color:#9aa3b2; }
+  body[data-theme="dark"] .dclose { color:#9aa3b2; }
 
   /* planner hamburger + drawer */
   .hamb2 { display:flex; flex-direction:column; justify-content:center; gap:4px; width:42px; height:37px;
@@ -171,27 +218,25 @@
   <!-- ============ HOME ============ -->
   <!-- ============ LAUNCHER ============ -->
   <div id="vLauncher">
-    <header class="top">
-      <div>
-        <h1>TripHub<span class="sync" id="sync" title="Stato sincronizzazione"><span class="d"></span><span id="syncTxt" style="display:none">offline</span></span></h1>
-        <div class="sub">Tutto per i viaggi della crew</div>
-      </div>
+    <header class="lhead">
+      <button class="hamb2 lset" id="btnSettings" aria-label="Impostazioni"><span></span><span></span><span></span></button>
+      <h1>TripHub<span class="sync" id="sync" title="Stato sincronizzazione"><span class="d"></span><span id="syncTxt" style="display:none">offline</span></span></h1>
+      <div class="sub">Tutto per i viaggi della crew</div>
     </header>
     <div class="tiles">
-      <button class="tile main" id="tileTrips">
-        <span class="tico">🧳</span>
-        <span><b>Viaggi</b><i>Eventi, voli, alloggio, budget</i></span>
-      </button>
-      <a class="tile" href="/swap/">
-        <span class="tico">🔄</span>
-        <span><b>Swap Planner</b><i>Turni e cambi</i></span>
-      </a>
-      <a class="tile" href="/flightscan/">
-        <span class="tico">✈️</span>
-        <span><b>FlightScan</b><i>Voli Ryanair</i></span>
-      </a>
+      <div class="orbit">
+        <button class="tile t1" id="tileTrips">
+          <span class="facebox"><span class="tico">🧳</span><b>Viaggi</b><i>Eventi e alloggi</i></span>
+        </button>
+        <a class="tile t2" href="/swap/">
+          <span class="facebox"><span class="tico">🔄</span><b>Swap Planner</b><i>Turni e cambi</i></span>
+        </a>
+        <a class="tile t3" href="/flightscan/">
+          <span class="facebox"><span class="tico">✈️</span><b>FlightScan</b><i>Voli Ryanair</i></span>
+        </a>
+      </div>
     </div>
-    <div class="footer">TripHub · v0.3</div>
+    <div class="footer">TripHub · v0.4</div>
   </div>
 
   <!-- ============ PLANNER (viaggi) ============ -->
@@ -694,9 +739,47 @@ function transportForm(t){
 }
 
 
+/* ================= tema e impostazioni ================= */
+const THKEY="triphub.theme";
+function applyTheme(){
+  const th=localStorage.getItem(THKEY)||"light";
+  document.body.dataset.theme=th;
+  const m=document.querySelector('meta[name="theme-color"]');
+  if(m)m.setAttribute("content",th==="dark"?"#12151c":"#f5f6f8");
+}
+function settingsForm(){
+  const th=localStorage.getItem(THKEY)||"light";
+  openModal(
+    '<h3>Impostazioni</h3>'
+    +'<label>Tema</label>'
+    +'<div class="seg" id="thSeg">'
+    +'<button data-t="light"'+(th==="light"?' class="on"':'')+'>☀️ Chiaro</button>'
+    +'<button data-t="dark"'+(th==="dark"?' class="on"':'')+'>🌙 Scuro</button>'
+    +'</div>'
+    +'<div class="mrow"><button class="btn ghost" id="sClose">Chiudi</button></div>'
+  );
+  mBody.querySelectorAll("#thSeg button").forEach(b=>b.onclick=()=>{
+    localStorage.setItem(THKEY,b.dataset.t);applyTheme();
+    mBody.querySelectorAll("#thSeg button").forEach(x=>x.classList.toggle("on",x===b));
+  });
+  mBody.querySelector("#sClose").onclick=closeModal;
+}
+function initSpinPause(){
+  const on=()=>document.body.classList.add("paused");
+  const off=()=>document.body.classList.remove("paused");
+  document.addEventListener("touchstart",on,{passive:true});
+  document.addEventListener("touchend",off,{passive:true});
+  document.addEventListener("touchcancel",off,{passive:true});
+  document.addEventListener("mousedown",on);
+  document.addEventListener("mouseup",off);
+}
+
 /* ================= init ================= */
 function init(){
   load();
+  applyTheme();
+  initSpinPause();
+  document.getElementById("btnSettings").onclick=settingsForm;
   document.getElementById("tileTrips").onclick=()=>show("planner");
   document.getElementById("btnHome").onclick=()=>show("launcher");
   document.getElementById("btnDrawer").onclick=openDrawer;
