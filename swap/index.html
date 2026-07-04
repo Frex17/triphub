@@ -54,6 +54,12 @@
   .sync .d{width:7px;height:7px;border-radius:50%;background:#7e8da0}
   .sync.online .d{background:#3ddc8e}
   .sync.online{color:#bfe9d4}
+  h1 #sync{padding:0;background:none;margin-left:9px;vertical-align:middle}
+  h1 #sync #syncTxt{display:none}
+  h1 #sync .d{width:8px;height:8px}
+  .homeb{display:flex;align-items:center;justify-content:center;width:38px;height:34px;
+    background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.18);border-radius:8px;
+    color:#E7EEF6;font-size:18px;line-height:1;text-decoration:none}
   #evLabel{margin:10px 0 0;font-family:"IBM Plex Mono",monospace;font-size:12.5px;font-weight:600;color:var(--amber);letter-spacing:.12em;text-transform:uppercase}
 
   .filters{position:sticky;top:0;z-index:20;background:var(--paper);padding:7px 10px 6px;border-bottom:1px solid var(--line);max-width:100%;overflow:hidden}
@@ -295,22 +301,30 @@
 <body>
 <header class="top">
   <div class="bar">
-    <h1><span class="pl">✈</span>Swap Planner</h1>
+    <h1><span class="pl">✈</span>Swap Planner<span class="sync" id="sync" title="Stato sincronizzazione"><span class="d"></span><span id="syncTxt">offline</span></span></h1>
     <div class="bar-r">
-      <span class="sync" id="sync"><span class="d"></span><span id="syncTxt">offline</span></span>
+      <a class="homeb" href="/" aria-label="TripHub">&#8962;</a>
       <button class="hamb" id="hambBtn" aria-label="Menu"><span></span><span></span><span></span></button>
     </div>
   </div>
   <p id="evLabel" style="display:none">—</p>
 </header>
 
-<div id="welcome" style="text-align:center;padding:80px 24px 40px;">
+<div id="welcome" style="text-align:center;padding:48px 24px 40px;">
   <div style="font-size:44px;line-height:1">✈</div>
-  <h2 style="margin:18px 0 8px;font-size:22px;color:var(--ink)">Pronti per un nuovo planning</h2>
-  <p style="color:var(--muted);font-size:14.5px;max-width:300px;margin:0 auto 24px;line-height:1.5">Crea un nuovo gruppo o apri uno di quelli esistenti dal menu.</p>
-  <div style="display:flex;flex-direction:column;gap:10px;max-width:240px;margin:0 auto">
-    <button id="welcomeNew" style="background:var(--ink);color:var(--paper);border:0;border-radius:12px;padding:13px 22px;font-size:15px;font-weight:600;cursor:pointer">+ Nuovo gruppo</button>
-    <button id="welcomeMenu" style="background:transparent;color:var(--ink);border:1.5px solid var(--muted);border-radius:12px;padding:12px 22px;font-size:15px;font-weight:600;cursor:pointer">I miei gruppi</button>
+  <h2 style="margin:16px 0 6px;font-size:22px;color:var(--ink)">Pronti per un nuovo planning</h2>
+  <p style="color:var(--muted);font-size:14px;max-width:300px;margin:0 auto 22px;line-height:1.5">Crea un nuovo gruppo qui sotto o riapri uno di quelli esistenti.</p>
+  <div style="max-width:320px;margin:0 auto;text-align:left">
+    <label style="display:block;font-size:12px;font-weight:600;color:var(--muted);margin:0 0 5px">Nome gruppo</label>
+    <input id="wName" placeholder="Es. Mad Cool 2026" style="width:100%;border:1.5px solid var(--muted);border-radius:11px;padding:12px;font-size:15px;font-family:inherit;background:var(--paper);color:var(--ink);box-sizing:border-box">
+    <div style="display:flex;gap:10px;margin-top:12px">
+      <div style="flex:1"><label style="display:block;font-size:12px;font-weight:600;color:var(--muted);margin:0 0 5px">Dal</label>
+        <input type="date" id="wStart" style="width:100%;border:1.5px solid var(--muted);border-radius:11px;padding:11px;font-size:14px;font-family:inherit;background:var(--paper);color:var(--ink);box-sizing:border-box;min-width:0"></div>
+      <div style="flex:1"><label style="display:block;font-size:12px;font-weight:600;color:var(--muted);margin:0 0 5px">Al</label>
+        <input type="date" id="wEnd" style="width:100%;border:1.5px solid var(--muted);border-radius:11px;padding:11px;font-size:14px;font-family:inherit;background:var(--paper);color:var(--ink);box-sizing:border-box;min-width:0"></div>
+    </div>
+    <button id="welcomeNew" style="width:100%;margin-top:16px;background:var(--ink);color:var(--paper);border:0;border-radius:12px;padding:13px;font-size:15px;font-weight:600;cursor:pointer">Crea gruppo</button>
+    <button id="welcomeMenu" style="width:100%;margin-top:10px;background:transparent;color:var(--ink);border:1.5px solid var(--muted);border-radius:12px;padding:12px;font-size:15px;font-weight:600;cursor:pointer">I miei gruppi</button>
   </div>
 </div>
 
@@ -1293,7 +1307,20 @@ function init(){
   state.cur=null;               // all'apertura nessun gruppo: schermata di benvenuto
   loadDec();
   document.getElementById("welcomeMenu").onclick=openDrawer;
-  document.getElementById("welcomeNew").onclick=()=>{openDrawer();addNewEvent();};
+  const wS=document.getElementById("wStart"),wE=document.getElementById("wEnd");
+  const _t=new Date(),_p=x=>String(x).padStart(2,"0");
+  const _today=_t.getFullYear()+"-"+_p(_t.getMonth()+1)+"-"+_p(_t.getDate());
+  wS.value=_today;wE.value=addDays(_today,4);
+  wS.onchange=()=>{if(wE.value<wS.value)wE.value=wS.value;};
+  document.getElementById("welcomeNew").onclick=()=>{
+    const nm=document.getElementById("wName").value.trim()||"Nuovo gruppo";
+    let st=wS.value||_today,en=wE.value||st;
+    if(en<st)en=st;
+    const e={id:"ev_"+Date.now(),name:nm,start:st,end:en,participants:[]};
+    state.events.push(e);pushEvent(e);
+    document.getElementById("wName").value="";
+    switchEvent(e.id);
+  };
   document.getElementById("addEvent").onclick=addNewEvent;
   document.getElementById("crewReset").onclick=()=>{
     if(!confirm("Ripristinare il roster di base? Le modifiche fatte verranno perse."))return;
@@ -1314,6 +1341,5 @@ function init(){
 }
 init();
 </script>
-<a href="/" aria-label="TripHub" style="position:fixed;left:14px;bottom:max(14px,env(safe-area-inset-bottom));z-index:35;width:42px;height:42px;border-radius:50%;background:rgba(20,25,35,.82);color:#fff;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:19px;box-shadow:0 2px 10px rgba(0,0,0,.25);backdrop-filter:blur(6px)">&#8962;</a>
 </body>
 </html>
