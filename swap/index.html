@@ -1122,14 +1122,15 @@ function pushRecapSnapshot(done,pend){
   try{
     const e=ev();
     const map={AL:"A/L",VTO:"VTO",SKIP:"non serve",al:"A/L",vto:"VTO",skip:"non serve"};
-    // chi lavora nei giorni del gruppo (turni ancora da coprire, prima di leave)
+    // chi ha ancora turni SCOPERTI nei giorni del gruppo (dopo leave e swap presi)
     const workers=[];
     participants().forEach(({f})=>{
       const wd=[];
       eventDays().forEach(d=>{
-        const p=phaseOf(f.roster,d),st=statusOf(p),fx=flexFlagFor(f);
-        let s=st; if(fx&&isWork(st))s=(fx==="flexL")?{type:"late"}:{type:"early"};
-        if(isWork(s))wd.push(d);
+        const st=statusFor(f,d);          // già considera i leave (off ottenuto)
+        if(!isWork(st))return;            // off o in ferie -> coperto
+        if(securedSwapFor(f.name,d))return; // ha uno swap preso -> coperto
+        wd.push(d);                        // ancora scoperto
       });
       if(wd.length)workers.push({name:f.name,days:wd});
     });
