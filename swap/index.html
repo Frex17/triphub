@@ -1073,7 +1073,7 @@ function pendingItems(){
 function renderRecap(){
   const done=doneItems(),pend=pendingItems();
   const box=document.getElementById("recap");
-  if(!done.length&&!pend.length){box.style.display="none";box.innerHTML="";return;}
+  if(!done.length&&!pend.length){box.style.display="none";box.innerHTML="";pushRecapSnapshot(done,pend);return;}
   box.style.display="block";
   box.style.borderLeftColor=pend.length?"var(--amber)":"var(--green)";
   const map={AL:["al","A/L"],VTO:["vto","VTO"],SKIP:["skip","Non serve"]};
@@ -1114,6 +1114,37 @@ function renderRecap(){
     else if(a==="undoswap")setDecision(+b.dataset.r,b.dataset.n,b.dataset.d,null);
     else setLeave(memberByCode(b.dataset.fc),b.dataset.d,null);
   });
+  pushRecapSnapshot(done,pend);
+}
+
+function pushRecapSnapshot(done,pend){
+  if(!sbReady||!state.cur)return;
+  try{
+    const e=ev();
+    const map={AL:"A/L",VTO:"VTO",SKIP:"non serve",al:"A/L",vto:"VTO",skip:"non serve"};
+    // chi lavora nei giorni del gruppo (turni ancora da coprire, prima di leave)
+    const workers=[];
+    participants().forEach(({f})=>{
+      const wd=[];
+      eventDays().forEach(d=>{
+        const p=phaseOf(f.roster,d),st=statusOf(p),fx=flexFlagFor(f);
+        let s=st; if(fx&&isWork(st))s=(fx==="flexL")?{type:"late"}:{type:"early"};
+        if(isWork(s))wd.push(d);
+      });
+      if(wd.length)workers.push({name:f.name,days:wd});
+    });
+    const doneRows=done.map(it=>{
+      if(it.kind==="swap")return{who:it.f.name,by:it.sw.name,day:it.d,kind:"swap"};
+      return{who:it.f.name,by:"",day:it.d,kind:(map[it.k]||it.k||"leave")};
+    });
+    const pendRows=pend.map(it=>({who:it.name,by:it.by,day:it.d,kind:"pending"}));
+    const allOff=workers.length===0;
+    sb.from("swap_recap").upsert({
+      event:state.cur,name:e.name,start_day:e.start,end_day:e.end,
+      all_off:allOff,workers,done:doneRows,pending:pendRows,
+      updated_at:new Date().toISOString()
+    }).then(()=>{},err=>console.warn("recap snapshot",err));
+  }catch(err){console.warn("snapshot",err);}
 }
 
 /* ---------- piano ---------- */
