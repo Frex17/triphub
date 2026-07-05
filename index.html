@@ -315,7 +315,7 @@
 
     <div class="panel" data-p="moves">
       <div class="sect">
-        <div class="sh">🚆 Spostamenti<span class="n" id="trN"></span></div>
+        <div class="sh">🚆 Mezzi<span class="n" id="trN"></span></div>
         <div class="sb">
           <div id="trList"></div>
           <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
@@ -359,7 +359,8 @@
         <div class="sb">
           <div class="hint" id="dutySum"></div>
           <div class="dutygrid" id="dutyGrid" style="margin-top:12px"></div>
-          <div class="links"><a href="/swap/">🔄 Apri Swap Planner</a></div>
+          <button class="btn ghost small" id="btnImpSwap" style="margin-top:12px">⬇️ Importa riepilogo da Swap Planner</button>
+          <div id="swapRecap" style="margin-top:12px"></div>
         </div>
       </div>
     </div>
@@ -368,7 +369,7 @@
 
     <div class="tabs" id="tripTabs">
       <button class="on" data-p="recap"><span class="ti">📋</span>Riepilogo</button>
-      <button data-p="moves"><span class="ti">🚆</span>Spostam.</button>
+      <button data-p="moves"><span class="ti">🚆</span>Mezzi</button>
       <button data-p="stay"><span class="ti">🛏</span>Alloggio</button>
       <button data-p="crew"><span class="ti">👥</span>Turni</button>
     </div>
@@ -570,7 +571,7 @@ function openTrip(id){curId=id;renderTrip(true);}
 function renderTrip(resetTab){
   const t=cur();if(!t){show("planner");return;}
   show("trip");
-  if(resetTab)switchTab("recap");
+  if(resetTab){switchTab("recap");const sr=document.getElementById("swapRecap");if(sr)sr.innerHTML="";}
   document.getElementById("dName").textContent=t.name||"(senza nome)";
   const days=eventDays(t);
   document.getElementById("dMeta").textContent="📍 "+(t.loc||"—")+" · "+pretty(t.start)+" → "+pretty(t.end)+" · "+(t.parts||[]).map(partLabel).join(", ");
@@ -702,12 +703,74 @@ function renderRecap(t){
     lodLine="🛏 "+esc(dove)+" — "+(bud>0?("budget "+eur(bud)):"da definire");
   }
   html+='<div style="border-top:1px solid var(--line-soft);margin-top:6px;padding-top:8px;font-size:13.5px">'+lodLine+'</div>';
+  // stato turni sintetico
+  const days2=eventDays(t);
+  const crewP=(t.parts||[]).filter(p=>CREW_DB[p]);
+  if(crewP.length&&days2.length){
+    const workers=[];
+    crewP.forEach(p=>{
+      const wd=days2.filter(d=>{const s=dutyFor(p,d);return s&&s.type!=="off";});
+      if(wd.length)workers.push(partLabel(p)+" "+wd.map(pretty).join(", "));
+    });
+    const dutyLine=workers.length
+      ?('⚠️ Tutti OFF tranne: '+workers.join(" · "))
+      :"✅ Sono tutti OFF nei giorni del viaggio";
+    html+='<div style="border-top:1px solid var(--line-soft);margin-top:6px;padding-top:8px;font-size:13px;color:'+(workers.length?"var(--warn)":"var(--ok)")+'">'+esc(dutyLine)+'</div>';
+  }
   const tot=(lod.mode==="night")?0:bud;
   if(tot>0){
     html+='<div class="recap-tot"><b>Alloggio previsto</b><b>'+eur(tot)+'</b></div>'
         +'<div style="display:flex;justify-content:space-between;font-size:13px;color:#8ba0c6;margin-top:2px"><span>A testa ('+nP+' pers.)</span><b>'+eur(tot/nP)+'</b></div>';
   }
   document.getElementById("recapBox").innerHTML=html;
+}
+
+/* ================= import turni da Swap Planner ================= */
+function shortNm(s){return String(s||"").split(" ")[0];}
+async function swapImport(t){
+  const box=document.getElementById("swapRecap");
+  const btn=document.getElementById("btnImpSwap");
+  if(!sbReady){box.innerHTML='<div class="hint">Sync non attiva: riprova tra qualche secondo.</div>';return;}
+  btn.textContent="Carico…";
+  try{
+    // 1) trova l'evento Swap che combacia (per nome o per date sovrapposte)
+    const ev=await sb.from("swap_events").select("*").eq("deleted",false);
+    const evs=ev.data||[];
+    const norm=s=>String(s||"").toLowerCase().replace(/\s+/g,"");
+    let match=evs.find(e=>norm(e.name)===norm(t.name));
+    if(!match)match=evs.find(e=>e.start_day&&e.end_day&&!(e.end_day<t.start||e.start_day>t.end));
+    if(!match){box.innerHTML='<div class="hint">Nessun gruppo su Swap Planner combacia con questo viaggio (per nome o date). Crealo lì con lo stesso nome o le stesse date.</div>';btn.textContent="⬇️ Importa riepilogo da Swap Planner";return;}
+    // 2) prendi le decisioni di quell'evento
+    const dec=await sb.from("swap_decisions").select("*").eq("event",match.id);
+    const rows=dec.data||[];
+    renderSwapRecap(t,match,rows);
+  }catch(e){
+    box.innerHTML='<div class="hint">Non riesco a leggere il riepilogo: '+esc(String(e.message||e))+'</div>';
+  }
+  btn.textContent="↻ Aggiorna riepilogo da Swap Planner";
+}
+function renderSwapRecap(t,ev,rows){
+  const box=document.getElementById("swapRecap");
+  // status possibili: secured (preso), pending/da confermare, al/vto/skip (tipo di leave), swap
+  const pend=rows.filter(r=>r.status==="pending"||r.status==="waiting"||r.status==="requested");
+  const secured=rows.filter(r=>r.status==="secured"||r.status==="swap"||["AL","VTO","SKIP","al","vto","skip"].includes(r.status));
+  function line(r){
+    const who=shortNm(r.person||("R"+(r.roster||"")));
+    const day=r.day?(weekday(r.day)+" "+pretty(r.day)):"";
+    const by=r.by_name?(" ← "+shortNm(r.by_name)):"";
+    const st=({secured:"✓ preso",swap:"↔ swap",AL:"A/L",VTO:"VTO",SKIP:"non serve",al:"A/L",vto:"VTO",skip:"non serve"})[r.status]||"⏳ in attesa";
+    return '<div style="display:flex;justify-content:space-between;gap:8px;font-size:12.5px;padding:4px 0"><span><b>'+esc(who)+'</b>'+esc(by)+' <span style="color:var(--muted)">'+esc(day)+'</span></span><span style="color:var(--brass);font-family:\'IBM Plex Mono\',monospace">'+esc(st)+'</span></div>';
+  }
+  let h='<div style="border:1px solid var(--line-soft);border-radius:12px;padding:12px;background:rgba(255,255,255,.03)">';
+  h+='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:var(--brass);letter-spacing:.14em;text-transform:uppercase;margin-bottom:8px">Riepilogo · '+esc(ev.name||"")+'</div>';
+  if(!rows.length){
+    h+='<div class="hint">Nessun cambio registrato su Swap Planner per questo gruppo: significa che al momento non risultano turni da coprire.</div>';
+  }else{
+    if(pend.length){h+='<div style="font-size:11px;color:var(--warn);font-weight:700;margin:4px 0 2px">⏳ IN ATTESA</div>'+pend.map(line).join("");}
+    if(secured.length){h+='<div style="font-size:11px;color:var(--ok);font-weight:700;margin:8px 0 2px">✓ SISTEMATI</div>'+secured.map(line).join("");}
+  }
+  h+='</div>';
+  box.innerHTML=h;
 }
 
 async function fsImport(t){
@@ -722,7 +785,7 @@ async function fsImport(t){
     mBody.innerHTML='<h3>Importa da FlightScan</h3><p class="hint" style="margin-top:8px">Nessun viaggio salvato in FlightScan. Cerca i voli lì, tocca ★ Salva, poi torna qui.</p><div class="mrow"><button class="btn ghost" id="iCancel">Chiudi</button></div>';
     mBody.querySelector("#iCancel").onclick=closeModal;return;
   }
-  mBody.innerHTML='<h3>Importa da FlightScan</h3><p class="hint" style="margin-top:6px">Scegli il viaggio salvato: i suoi voli finiscono negli Spostamenti.</p>'
+  mBody.innerHTML='<h3>Importa da FlightScan</h3><p class="hint" style="margin-top:6px">Scegli il viaggio salvato: i suoi voli finiscono nei Mezzi.</p>'
     +'<div class="plist" style="margin-top:10px">'+rows.map((r,i)=>
       '<button type="button" class="prow" data-i="'+i+'"><span style="text-align:left;min-width:0"><b style="display:block;font-size:14px">'+esc(r.name||"(senza nome)")+'</b>'
       +'<span style="font-size:12px;color:#6b7280">'+pretty(r.date_out)+(r.date_ret?(" → "+pretty(r.date_ret)):"")+' · '+((r.flights||[]).length)+' voli</span></span><span class="ck">→</span></button>').join("")
@@ -859,6 +922,7 @@ function init(){
   document.querySelectorAll("#tripTabs button").forEach(b=>b.onclick=()=>switchTab(b.dataset.p));
   document.getElementById("btnAddTr").onclick=()=>{const t=cur();if(t)transportForm(t);};
   document.getElementById("btnImpFS").onclick=()=>{const t=cur();if(t)fsImport(t);};
+  document.getElementById("btnImpSwap").onclick=()=>{const t=cur();if(t)swapImport(t);};
   show("launcher");
   initSupabase();
 }
