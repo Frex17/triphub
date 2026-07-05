@@ -164,6 +164,17 @@
   .links { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
   .links a { font-size:12.5px; font-weight:600; text-decoration:none; color:var(--ink);
     background:rgba(255,255,255,.06); border:1px solid var(--line-soft); border-radius:999px; padding:7px 12px; }
+  /* provider buttons (mezzi/alloggio) */
+  .provs { display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-top:14px; }
+  .prov { display:flex; align-items:center; gap:10px; text-decoration:none; color:var(--ink);
+    background:linear-gradient(160deg, rgba(27,41,66,.9), rgba(17,28,48,.7)); border:1px solid var(--line);
+    border-radius:13px; padding:12px 13px; font-size:13.5px; font-weight:700; transition:border-color .12s, transform .08s; }
+  .prov:active { transform:scale(.97); }
+  .prov .pv-ic { font-size:19px; line-height:1; }
+  .prov .pv-tx { display:flex; flex-direction:column; line-height:1.2; min-width:0; }
+  .prov .pv-tx small { font-weight:500; font-size:10.5px; color:var(--muted); }
+  .prov.wide { grid-column:1/-1; }
+  .prov.hi { border-color:var(--brass); }
 
   /* ---------- recap ---------- */
   .recap-tot { display:flex; justify-content:space-between; font-size:15px; margin-top:10px; padding-top:10px; border-top:1px solid var(--line); }
@@ -358,7 +369,6 @@
         <div class="sh">👥 Turni crew<span class="n">da Swap Planner</span></div>
         <div class="sb">
           <div class="hint" id="dutySum"></div>
-          <div class="dutygrid" id="dutyGrid" style="margin-top:12px"></div>
           <button class="btn ghost small" id="btnImpSwap" style="margin-top:12px">⬇️ Importa riepilogo da Swap Planner</button>
           <div id="swapRecap" style="margin-top:12px"></div>
         </div>
@@ -465,12 +475,12 @@ let sb=null,sbReady=false,pushTimers={};
 function setSync(on){const el=document.getElementById("sync");el.classList.toggle("on",!!on);document.getElementById("syncTxt").textContent=on?"sincronizzato":"offline";}
 function rowOf(t){return{id:t.id,name:t.name,start_day:t.start,end_day:t.end,location:t.loc,
   participants:(t.parts||[]).join(","),
-  data:{transports:t.transports||[],lodging:t.lodging||{},budget:t.budget||{}},
+  data:{transports:t.transports||[],lodging:t.lodging||{},budget:t.budget||{},swapSnap:t.swapSnap||null},
   deleted:!!t.deleted,updated_at:t.updated_at||new Date().toISOString()};}
 function tripOf(r){return{id:r.id,name:r.name||"",loc:r.location||"",start:r.start_day||"",end:r.end_day||"",
   parts:(r.participants!=null&&r.participants!=="")?r.participants.split(","):[],
-  transports:(r.data&&r.data.transports)||[],lodging:(r.data&&r.data.lodging)||{mode:"hotel",total:"",nights:"",note:""},
-  budget:(r.data&&r.data.budget)||{cap:"",extras:[]},deleted:!!r.deleted,updated_at:r.updated_at};}
+  transports:(r.data&&r.data.transports)||[],lodging:(r.data&&r.data.lodging)||{mode:"hotel",ppn:"",nights:"",note:"",zone:""},
+  budget:(r.data&&r.data.budget)||{cap:"",extras:[]},swapSnap:(r.data&&r.data.swapSnap)||null,deleted:!!r.deleted,updated_at:r.updated_at};}
 function pushTrip(t){
   if(!sbReady)return;
   clearTimeout(pushTimers[t.id]);
@@ -571,38 +581,25 @@ function openTrip(id){curId=id;renderTrip(true);}
 function renderTrip(resetTab){
   const t=cur();if(!t){show("planner");return;}
   show("trip");
-  if(resetTab){switchTab("recap");const sr=document.getElementById("swapRecap");if(sr)sr.innerHTML="";}
+  if(resetTab){switchTab("recap");}
   document.getElementById("dName").textContent=t.name||"(senza nome)";
   const days=eventDays(t);
   document.getElementById("dMeta").textContent="📍 "+(t.loc||"—")+" · "+pretty(t.start)+" → "+pretty(t.end)+" · "+(t.parts||[]).map(partLabel).join(", ");
 
-  /* turni: riepilogo compatto */
+  /* turni: riepilogo compatto ordinato */
   const lines=[];
   (t.parts||[]).forEach(p=>{
     if(!CREW_DB[p])return;
     const wd=days.filter(d=>{const s=dutyFor(p,d);return s&&s.type!=="off";});
-    if(wd.length)lines.push("⚠️ "+partLabel(p)+" lavora "+wd.map(pretty).join(", "));
-    else lines.push("✅ "+partLabel(p)+" è OFF tutti i giorni");
+    if(wd.length)lines.push('<div style="display:flex;gap:8px;padding:5px 0;border-top:1px solid var(--line-soft)"><span style="color:var(--warn)">⚠️</span><span><b>'+esc(partLabel(p))+'</b> lavora <span style="color:var(--muted)">'+wd.map(pretty).join(", ")+'</span></span></div>');
+    else lines.push('<div style="display:flex;gap:8px;padding:5px 0;border-top:1px solid var(--line-soft)"><span style="color:var(--ok)">✅</span><span><b>'+esc(partLabel(p))+'</b> <span style="color:var(--muted)">OFF tutti i giorni</span></span></div>');
   });
   document.getElementById("dutySum").innerHTML=lines.length
-    ?lines.map(esc).join("<br>")
-    :"Nessun membro crew tra i partecipanti.";
-  // griglia turni importata (stesso motore di Swap Planner)
-  const crewParts=(t.parts||[]).filter(p=>CREW_DB[p]);
-  const gEl=document.getElementById("dutyGrid");
-  if(crewParts.length&&days.length){
-    let g='<table><tr><th></th>'+days.map(d=>'<th>'+weekday(d)+'<br>'+pretty(d)+'</th>').join("")+'</tr>';
-    crewParts.forEach(p=>{
-      g+='<tr><td class="nm">'+esc(partLabel(p))+'</td>'+days.map(d=>{
-        const s=dutyFor(p,d);
-        if(!s)return'<td></td>';
-        if(s.type==="off")return'<td><span class="dcell off">OFF</span></td>';
-        return'<td><span class="dcell work">'+(s.type==="early"?"E":"L")+s.day+'</span></td>';
-      }).join("")+'</tr>';
-    });
-    g+='</table>';
-    gEl.innerHTML=g;
-  }else gEl.innerHTML="";
+    ?('<div style="border-top:0">'+lines.join("")+'</div>')
+    :'<div class="hint">Nessun membro crew tra i partecipanti.</div>';
+  const gEl=document.getElementById("dutyGrid");if(gEl)gEl.innerHTML="";
+  renderSwapRecap(t.swapSnap||null);
+  const impBtn=document.getElementById("btnImpSwap");if(impBtn)impBtn.textContent=t.swapSnap?"↻ Aggiorna da Swap Planner":"⬇️ Importa riepilogo da Swap Planner";
 
   /* spostamenti */
   const icons={flight:"✈️",train:"🚆",bus:"🚌",car:"🚗"};
@@ -618,11 +615,12 @@ function renderTrip(resetTab){
     t.transports=t.transports.filter(x=>x.id!==b.dataset.del);touch(t);renderTrip();
   });
   const q=encodeURIComponent(t.loc||"");
+  document.getElementById("trLinks").className="provs";
   document.getElementById("trLinks").innerHTML=
-    '<a href="/flightscan/">✈️ FlightScan</a>'
-    +'<a href="https://www.trenitalia.com" target="_blank" rel="noopener">🚆 Trenitalia</a>'
-    +'<a href="https://www.flixbus.it" target="_blank" rel="noopener">🚌 FlixBus</a>'
-    +'<a href="https://www.omio.it" target="_blank" rel="noopener">🧭 Omio</a>';
+    '<a class="prov hi wide" href="/flightscan/"><span class="pv-ic">✈️</span><span class="pv-tx">FlightScan<small>voli Ryanair, cerca e importa</small></span></a>'
+    +'<a class="prov" href="https://www.trenitalia.com" target="_blank" rel="noopener"><span class="pv-ic">🚆</span><span class="pv-tx">Trenitalia<small>treni</small></span></a>'
+    +'<a class="prov" href="https://www.flixbus.it" target="_blank" rel="noopener"><span class="pv-ic">🚌</span><span class="pv-tx">FlixBus<small>bus</small></span></a>'
+    +'<a class="prov wide" href="https://www.omio.it" target="_blank" rel="noopener"><span class="pv-ic">🧭</span><span class="pv-tx">Omio<small>confronta treni, bus e voli</small></span></a>';
 
   /* alloggio */
   const lod=t.lodging||(t.lodging={mode:"hotel",ppn:"",nights:"",note:"",zone:""});
@@ -656,16 +654,20 @@ function renderTrip(resetTab){
 
 function renderLodCalc(t){
   const lod=t.lodging||{},calc=document.getElementById("lodCalc"),links=document.getElementById("lodLinks");
+  links.className="provs";
   const zone=(lod.zone||"").trim();
   const q=encodeURIComponent(((zone?zone+" ":"")+(t.loc||"")).trim());
   if(lod.mode==="night"){
     calc.innerHTML="";
-    links.innerHTML='<a href="/flightscan/">✈️ Primo volo del mattino</a>';
+    links.innerHTML='<a class="prov hi wide" href="/flightscan/"><span class="pv-ic">✈️</span><span class="pv-tx">FlightScan<small>primo volo del mattino</small></span></a>';
     return;
   }
   const nP=Math.max(1,(t.parts||[]).length);
   const nights=num(lod.nights)>0?num(lod.nights):Math.max(1,(t.start&&t.end)?daysBetween(t.start,t.end):1);
   const ppn=num(lod.ppn);
+  const bk="https://www.booking.com/searchresults.it.html?ss="+q+"&checkin="+t.start+"&checkout="+t.end+"&group_adults="+nP;
+  const ab="https://www.airbnb.it/s/"+q+"/homes?checkin="+t.start+"&checkout="+t.end+"&adults="+nP;
+  const tc="https://www.trip.com/hotels/list?city=&checkin="+t.start+"&checkout="+t.end+"&keyword="+q;
   if(ppn>0){
     const perNight=ppn*nP, budTot=ppn*nP*nights;
     let fascia,col;
@@ -674,12 +676,16 @@ function renderLodCalc(t){
     else if(ppn<60){fascia="hotel semplici";col="var(--ok)";}
     else {fascia="hotel comodi";col="var(--ok)";}
     calc.innerHTML='<b style="color:var(--brass)">'+eur(budTot)+'</b> totali · '+eur(perNight)+'/notte gruppo · <span style="color:'+col+'">'+fascia+'</span>';
-    links.innerHTML='<a href="https://www.booking.com/searchresults.it.html?ss='+q+'&checkin='+t.start+'&checkout='+t.end+'&group_adults='+nP+'&nflt=price%253DEUR-1-'+Math.ceil(perNight)+'-1" target="_blank" rel="noopener">🏨 Booking ≤ '+eur(Math.ceil(perNight))+'/notte</a>'
-      +'<a href="https://www.airbnb.it/s/'+q+'/homes?checkin='+t.start+'&checkout='+t.end+'&adults='+nP+'&price_max='+Math.ceil(budTot)+'" target="_blank" rel="noopener">🏠 Airbnb</a>';
+    links.innerHTML=
+      '<a class="prov hi" href="'+bk+'&nflt=price%253DEUR-1-'+Math.ceil(perNight)+'-1" target="_blank" rel="noopener"><span class="pv-ic">🏨</span><span class="pv-tx">Booking<small>≤ '+eur(Math.ceil(perNight))+'/notte</small></span></a>'
+      +'<a class="prov" href="'+ab+'&price_max='+Math.ceil(budTot)+'" target="_blank" rel="noopener"><span class="pv-ic">🏠</span><span class="pv-tx">Airbnb<small>≤ '+eur(Math.ceil(budTot))+' tot</small></span></a>'
+      +'<a class="prov wide" href="'+tc+'" target="_blank" rel="noopener"><span class="pv-ic">🌏</span><span class="pv-tx">Trip.com<small>hotel, spesso più economici</small></span></a>';
   }else{
     calc.innerHTML="Metti quanto volete spendere a testa a notte per il totale e la ricerca filtrata.";
-    links.innerHTML='<a href="https://www.booking.com/searchresults.it.html?ss='+q+'&checkin='+t.start+'&checkout='+t.end+'&group_adults='+nP+'" target="_blank" rel="noopener">🏨 Booking ('+nP+' pers.)</a>'
-      +'<a href="https://www.airbnb.it/s/'+q+'/homes?checkin='+t.start+'&checkout='+t.end+'&adults='+nP+'" target="_blank" rel="noopener">🏠 Airbnb</a>';
+    links.innerHTML=
+      '<a class="prov hi" href="'+bk+'" target="_blank" rel="noopener"><span class="pv-ic">🏨</span><span class="pv-tx">Booking<small>'+nP+' persone</small></span></a>'
+      +'<a class="prov" href="'+ab+'" target="_blank" rel="noopener"><span class="pv-ic">🏠</span><span class="pv-tx">Airbnb<small>appartamenti</small></span></a>'
+      +'<a class="prov wide" href="'+tc+'" target="_blank" rel="noopener"><span class="pv-ic">🌏</span><span class="pv-tx">Trip.com<small>hotel</small></span></a>';
   }
 }
 
@@ -703,10 +709,21 @@ function renderRecap(t){
     lodLine="🛏 "+esc(dove)+" — "+(bud>0?("budget "+eur(bud)):"da definire");
   }
   html+='<div style="border-top:1px solid var(--line-soft);margin-top:6px;padding-top:8px;font-size:13.5px">'+lodLine+'</div>';
-  // stato turni sintetico
+  // stato turni sintetico: preferisci lo snapshot importato da Swap Planner
   const days2=eventDays(t);
   const crewP=(t.parts||[]).filter(p=>CREW_DB[p]);
-  if(crewP.length&&days2.length){
+  if(t.swapSnap){
+    const snap=t.swapSnap;
+    let dutyLine,col;
+    if(snap.all_off){dutyLine="✅ Sono tutti OFF (sistemati su Swap Planner)";col="var(--ok)";}
+    else{
+      const w=(snap.workers||[]).map(x=>shortNm(x.name)+" "+(x.days||[]).map(pretty).join(", "));
+      const nPend=(snap.pending||[]).length;
+      dutyLine=(w.length?("⚠️ Tutti OFF tranne: "+w.join(" · ")):"Da sistemare")+(nPend?(" · ⏳ "+nPend+" in attesa"):"");
+      col="var(--warn)";
+    }
+    html+='<div style="border-top:1px solid var(--line-soft);margin-top:6px;padding-top:8px;font-size:13px;color:'+col+'">'+esc(dutyLine)+'</div>';
+  }else if(crewP.length&&days2.length){
     const workers=[];
     crewP.forEach(p=>{
       const wd=days2.filter(d=>{const s=dutyFor(p,d);return s&&s.type!=="off";});
@@ -733,42 +750,43 @@ async function swapImport(t){
   if(!sbReady){box.innerHTML='<div class="hint">Sync non attiva: riprova tra qualche secondo.</div>';return;}
   btn.textContent="Carico…";
   try{
-    // 1) trova l'evento Swap che combacia (per nome o per date sovrapposte)
-    const ev=await sb.from("swap_events").select("*").eq("deleted",false);
-    const evs=ev.data||[];
     const norm=s=>String(s||"").toLowerCase().replace(/\s+/g,"");
-    let match=evs.find(e=>norm(e.name)===norm(t.name));
-    if(!match)match=evs.find(e=>e.start_day&&e.end_day&&!(e.end_day<t.start||e.start_day>t.end));
-    if(!match){box.innerHTML='<div class="hint">Nessun gruppo su Swap Planner combacia con questo viaggio (per nome o date). Crealo lì con lo stesso nome o le stesse date.</div>';btn.textContent="⬇️ Importa riepilogo da Swap Planner";return;}
-    // 2) prendi le decisioni di quell'evento
-    const dec=await sb.from("swap_decisions").select("*").eq("event",match.id);
-    const rows=dec.data||[];
-    renderSwapRecap(t,match,rows);
+    const res=await sb.from("swap_recap").select("*");
+    const all=res.data||[];
+    let snap=all.find(e=>norm(e.name)===norm(t.name));
+    if(!snap)snap=all.find(e=>e.start_day&&e.end_day&&!(e.end_day<t.start||e.start_day>t.end));
+    if(!snap){
+      box.innerHTML='<div class="hint">Nessun gruppo su Swap Planner combacia con questo viaggio. Aprilo su Swap Planner (stesso nome o stesse date) così il riepilogo viene generato, poi riprova.</div>';
+      btn.textContent="↻ Importa riepilogo da Swap Planner";return;
+    }
+    t.swapSnap=snap;touch(t);          // resta salvato nel viaggio
+    renderSwapRecap(snap);
+    renderRecap(t);                    // aggiorna anche il riepilogo generale
   }catch(e){
     box.innerHTML='<div class="hint">Non riesco a leggere il riepilogo: '+esc(String(e.message||e))+'</div>';
   }
-  btn.textContent="↻ Aggiorna riepilogo da Swap Planner";
+  btn.textContent="↻ Aggiorna da Swap Planner";
 }
-function renderSwapRecap(t,ev,rows){
-  const box=document.getElementById("swapRecap");
-  // status possibili: secured (preso), pending/da confermare, al/vto/skip (tipo di leave), swap
-  const pend=rows.filter(r=>r.status==="pending"||r.status==="waiting"||r.status==="requested");
-  const secured=rows.filter(r=>r.status==="secured"||r.status==="swap"||["AL","VTO","SKIP","al","vto","skip"].includes(r.status));
-  function line(r){
-    const who=shortNm(r.person||("R"+(r.roster||"")));
+function renderSwapRecap(snap){
+  const box=document.getElementById("swapRecap");if(!box)return;
+  if(!snap){box.innerHTML="";return;}
+  const kindLbl={swap:"↔ swap",pending:"⏳ in attesa","A/L":"A/L",VTO:"VTO","non serve":"non serve",leave:"off"};
+  function row(r){
     const day=r.day?(weekday(r.day)+" "+pretty(r.day)):"";
-    const by=r.by_name?(" ← "+shortNm(r.by_name)):"";
-    const st=({secured:"✓ preso",swap:"↔ swap",AL:"A/L",VTO:"VTO",SKIP:"non serve",al:"A/L",vto:"VTO",skip:"non serve"})[r.status]||"⏳ in attesa";
-    return '<div style="display:flex;justify-content:space-between;gap:8px;font-size:12.5px;padding:4px 0"><span><b>'+esc(who)+'</b>'+esc(by)+' <span style="color:var(--muted)">'+esc(day)+'</span></span><span style="color:var(--brass);font-family:\'IBM Plex Mono\',monospace">'+esc(st)+'</span></div>';
+    const by=r.by?(' <span style="color:var(--muted)">← '+esc(shortNm(r.by))+'</span>'):"";
+    const st=kindLbl[r.kind]||"✓ preso";
+    return '<div style="display:flex;justify-content:space-between;gap:8px;font-size:12.5px;padding:5px 0;border-top:1px solid var(--line-soft)"><span><b>'+esc(shortNm(r.who))+'</b>'+by+' <span style="color:var(--muted)">'+esc(day)+'</span></span><span style="color:var(--brass);font-family:\'IBM Plex Mono\',monospace;white-space:nowrap">'+esc(st)+'</span></div>';
   }
-  let h='<div style="border:1px solid var(--line-soft);border-radius:12px;padding:12px;background:rgba(255,255,255,.03)">';
-  h+='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:var(--brass);letter-spacing:.14em;text-transform:uppercase;margin-bottom:8px">Riepilogo · '+esc(ev.name||"")+'</div>';
-  if(!rows.length){
-    h+='<div class="hint">Nessun cambio registrato su Swap Planner per questo gruppo: significa che al momento non risultano turni da coprire.</div>';
-  }else{
-    if(pend.length){h+='<div style="font-size:11px;color:var(--warn);font-weight:700;margin:4px 0 2px">⏳ IN ATTESA</div>'+pend.map(line).join("");}
-    if(secured.length){h+='<div style="font-size:11px;color:var(--ok);font-weight:700;margin:8px 0 2px">✓ SISTEMATI</div>'+secured.map(line).join("");}
+  const pend=snap.pending||[], done=snap.done||[];
+  let h='<div style="border:1px solid var(--line-soft);border-radius:12px;padding:12px 14px;background:rgba(255,255,255,.03)">';
+  h+='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:var(--brass);letter-spacing:.14em;text-transform:uppercase;margin-bottom:6px">Resoconto · '+esc(snap.name||"")+'</div>';
+  if(snap.all_off){
+    h+='<div style="color:var(--ok);font-weight:700;font-size:13.5px">✅ Tutti sistemati: nessun turno da coprire.</div>';
+  }else if(!pend.length&&!done.length){
+    h+='<div class="hint">Nessun cambio registrato su Swap Planner per questo gruppo.</div>';
   }
+  if(pend.length){h+='<div style="font-size:11px;color:var(--warn);font-weight:700;margin:8px 0 0">⏳ IN ATTESA · '+pend.length+'</div>'+pend.map(row).join("");}
+  if(done.length){h+='<div style="font-size:11px;color:var(--ok);font-weight:700;margin:10px 0 0">✓ PRESI · '+done.length+'</div>'+done.map(row).join("");}
   h+='</div>';
   box.innerHTML=h;
 }
