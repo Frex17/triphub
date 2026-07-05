@@ -270,6 +270,24 @@
       <div class="field"><label>Andata</label><input id="f-d1" type="date"></div>
       <div class="field"><label>Ritorno</label><input id="f-d2" type="date"></div>
     </div>
+    <label class="mcrow" style="display:flex;align-items:center;gap:9px;margin:6px 0 2px;cursor:pointer;font-size:14px">
+      <input type="checkbox" id="f-multi" style="width:20px;height:20px;flex:0 0 auto" onchange="toggleMulti()">
+      <span>Ritorno da un&#39;altra città (multi-tratta)</span>
+    </label>
+    <div id="multiFields" style="display:none">
+      <div class="field"><label>Ritorno · Partenza</label>
+        <div class="ac">
+          <div class="acbar"><input id="f-rfrom" autocomplete="off" placeholder="Es. Madrid (MAD)"><button class="acclear" id="clear-rfrom" onclick="clearField('rfrom')" style="display:none" aria-label="Cancella">&#10005;</button></div>
+          <div class="acdrop" id="drop-rfrom"></div>
+        </div>
+      </div>
+      <div class="field"><label>Ritorno · Arrivo</label>
+        <div class="ac">
+          <div class="acbar"><input id="f-rto" autocomplete="off" placeholder="Es. Bari (BRI)"><button class="acclear" id="clear-rto" onclick="clearField('rto')" style="display:none" aria-label="Cancella">&#10005;</button></div>
+          <div class="acdrop" id="drop-rto"></div>
+        </div>
+      </div>
+    </div>
     <div class="row2">
       <div class="field"><label>Scalo min (h)</label><input id="f-min" type="number" inputmode="decimal" value="1"></div>
       <div class="field"><label>Scalo max (h)</label><input id="f-max" type="number" inputmode="decimal" value="3"></div>
@@ -315,7 +333,8 @@ var SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI
 
 // ---- stato ----
 var AIRPORTS=[], AIRMAP={};
-var SEL={from:null, to:null};
+var SEL={from:null, to:null, rfrom:null, rto:null};
+var MULTI=false;
 var DROPCTX={from:null, to:null};
 var RESULTS={and:[], rit:[]};
 var dir="and", SAVED=[], OPTBYKEY={}, IMPORT_ROWS=[], IMPORT_EVENT="";
@@ -585,6 +604,10 @@ async function doSearch(){
   var F=froms.slice(0,3), T=tos.slice(0,3);
   el("subAnd").textContent=F.join("/")+" \u2192 "+T.join("/");
   el("subRit").textContent=T.join("/")+" \u2192 "+F.join("/");
+  if(MULTI){
+    var _rf=selCodes("rfrom").slice(0,3), _rt=selCodes("rto").slice(0,3);
+    if(_rf.length&&_rt.length)el("subRit").textContent=_rf.join("/")+" \u2192 "+_rt.join("/");
+  }
   var pairs=pairsOf(F,T);
   RESULTS={and:[],rit:[]}; el("list").innerHTML="";
   setStatus('<div class="spin"></div>Cerco le combinazioni su Ryanair...','');
@@ -596,8 +619,20 @@ async function doSearch(){
     el("tabsBar").style.display=""; el("resBar").style.display="";
     setStatus("",null); setDir("and");
     if(d2){
-      var s2=await Promise.allSettled(pairs.map(function(p){ return fetchPair(p[1],p[0],d2,minH,maxH); }));
-      RESULTS.rit=mergeOpts(s2.filter(function(s){return s.status==="fulfilled";}).map(function(s){return s.value;}));
+      var rf=F, rt=T;
+      if(MULTI){
+        var rfc=selCodes("rfrom").slice(0,3), rtc=selCodes("rto").slice(0,3);
+        rf=rtc.length?rtc:T;      // ritorno: partenza dai codici "rfrom" -> destinazione "rto"
+        rt=rfc.length?rfc:F;
+        // pairsOf attende (origine, destinazione): origine = rfrom, dest = rto
+        var rpairs=pairsOf(rfc.length?rfc:T, rtc.length?rtc:F);
+        var s2m=await Promise.allSettled(rpairs.map(function(p){ return fetchPair(p[0],p[1],d2,minH,maxH); }));
+        RESULTS.rit=mergeOpts(s2m.filter(function(s){return s.status==="fulfilled";}).map(function(s){return s.value;}));
+        el("subRit").textContent=(rfc.length?rfc.join("/"):T.join("/"))+" \u2192 "+(rtc.length?rtc.join("/"):F.join("/"));
+      }else{
+        var s2=await Promise.allSettled(pairs.map(function(p){ return fetchPair(p[1],p[0],d2,minH,maxH); }));
+        RESULTS.rit=mergeOpts(s2.filter(function(s){return s.status==="fulfilled";}).map(function(s){return s.value;}));
+      }
     }
     if(dir==="rit") render();
     if(!RESULTS.and.length){ setStatus("Nessuna combinazione per l&#39;andata con questi filtri. Allarga la finestra di scalo o cambia data.",""); }
@@ -621,12 +656,17 @@ function setupAC(field){
   inp.addEventListener("focus", function(){ if(SEL[field]){ try{inp.select();}catch(e){} return; } if(inp.value) renderDrop(field); });
 }
 document.addEventListener("click", function(e){
-  ["from","to"].forEach(function(f){ var ac=el("f-"+f).closest(".ac"); if(ac && !ac.contains(e.target)){ el("drop-"+f).classList.remove("open"); } });
+  ["from","to","rfrom","rto"].forEach(function(f){ var elx=el("f-"+f); if(!elx)return; var ac=elx.closest(".ac"); if(ac && !ac.contains(e.target)){ el("drop-"+f).classList.remove("open"); } });
 });
+function toggleMulti(){
+  MULTI=el("f-multi").checked;
+  el("multiFields").style.display=MULTI?"":"none";
+  updateRecap();
+}
 
 var savedTheme="light"; try{ savedTheme=localStorage.getItem("fs.theme")||"light"; }catch(e){}
 setTheme(savedTheme);
-setupAC("from"); setupAC("to");
+setupAC("from"); setupAC("to"); setupAC("rfrom"); setupAC("rto");
 ["f-d1","f-d2","f-pax"].forEach(function(id){ el(id).addEventListener("input", updateRecap); });
 (async function(){ await loadAirports(); openSearch(); })();
 </script>
