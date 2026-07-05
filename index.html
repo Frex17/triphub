@@ -32,6 +32,7 @@
   }
   * { margin:0; padding:0; box-sizing:border-box; }
   html,body { height:100%; }
+  html { background:#0a0f1c; }
   body {
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
     background:
@@ -216,6 +217,23 @@
   .mrow .btn { flex:1; }
 
   .footer { text-align:center; color:#4d5b74; font-size:11px; padding:22px 0 6px; font-family:"IBM Plex Mono",monospace; letter-spacing:.1em; }
+
+  /* ---------- tabs liquid glass ---------- */
+  .tabs { position:fixed; left:50%; bottom:calc(16px + env(safe-area-inset-bottom)); transform:translateX(-50%);
+    z-index:55; display:flex; gap:3px; padding:5px;
+    background:rgba(18,28,48,.55); border:1px solid rgba(255,255,255,.14); border-radius:18px;
+    backdrop-filter:blur(18px) saturate(1.4); -webkit-backdrop-filter:blur(18px) saturate(1.4);
+    box-shadow:0 10px 30px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.12); }
+  .tabs button { border:0; background:transparent; color:var(--muted); cursor:pointer; font-family:inherit;
+    display:flex; flex-direction:column; align-items:center; gap:3px; padding:9px 13px; border-radius:13px;
+    font-size:10px; font-weight:700; letter-spacing:.02em; min-width:58px; transition:color .15s, background .15s; }
+  .tabs button .ti { font-size:19px; line-height:1; }
+  .tabs button.on { color:#0c1526; background:var(--brass); box-shadow:0 3px 10px rgba(198,163,90,.4); }
+  .panel { display:none; }
+  .panel.on { display:block; animation:fadein .22s ease; }
+  @keyframes fadein { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+  /* quando siamo in un viaggio, spazio extra in fondo per la tab bar */
+  #vTrip:not(.hidden) ~ .nothing, body.intrip { }
 </style>
 </head>
 <body>
@@ -279,56 +297,72 @@
       <div class="meta" id="dMeta"></div>
     </div>
 
-    <div class="sect">
-      <div class="sh">📋 Riepilogo</div>
-      <div class="sb" id="recapBox"></div>
-    </div>
-
-    <div class="sect">
-      <div class="sh">🚆 Spostamenti<span class="n" id="trN"></span></div>
-      <div class="sb">
-        <div id="trList"></div>
-        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
-          <button class="btn ghost small" id="btnAddTr">+ Aggiungi</button>
-          <button class="btn ghost small" id="btnImpFS">⬇️ Importa da FlightScan</button>
-        </div>
-        <div class="links" id="trLinks"></div>
+    <div class="panel on" data-p="recap">
+      <div class="sect">
+        <div class="sh">📋 Riepilogo</div>
+        <div class="sb" id="recapBox"></div>
       </div>
     </div>
 
-    <div class="sect">
-      <div class="sh">🛏 Alloggio</div>
-      <div class="sb">
-        <div class="seg" id="lodSeg">
-          <button data-m="hotel">🏨 Hotel</button>
-          <button data-m="night">🌙 Notte fuori</button>
-          <button data-m="mix">🔀 Misto</button>
-        </div>
-        <div id="lodNightHint" class="hint hidden" style="margin-top:10px">Niente alloggio: si resta fuori e si prende il primo volo del mattino. Costo alloggio: 0 €.</div>
-        <div id="lodFields">
-          <label>Budget a persona a notte (€)</label>
-          <input type="number" id="lodBud" inputmode="decimal" placeholder="Es. 25">
-          <div class="hint" id="lodCalc" style="margin-top:8px"></div>
-          <div class="grid2" style="margin-top:4px">
-            <div><label>Costo effettivo prenotato (€)</label><input type="number" id="lodTotal" inputmode="decimal" placeholder="0"></div>
-            <div><label>Notti</label><input type="number" id="lodNights" inputmode="numeric" placeholder="0"></div>
+    <div class="panel" data-p="moves">
+      <div class="sect">
+        <div class="sh">🚆 Spostamenti<span class="n" id="trN"></span></div>
+        <div class="sb">
+          <div id="trList"></div>
+          <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+            <button class="btn ghost small" id="btnAddTr">+ Aggiungi</button>
+            <button class="btn ghost small" id="btnImpFS">⬇️ Importa da FlightScan</button>
           </div>
+          <div class="links" id="trLinks"></div>
         </div>
-        <label>Note (dove, link, idee)</label>
-        <textarea id="lodNote" rows="2" placeholder="Es. zona centro, ostello X, appartamento di Y..."></textarea>
-        <div class="links" id="lodLinks"></div>
       </div>
     </div>
 
-    <div class="sect">
-      <div class="sh">👥 Turni crew</div>
-      <div class="sb">
-        <div class="hint" id="dutySum"></div>
-        <div class="links"><a href="/swap/">🔄 Vedi Swap Planner</a></div>
+    <div class="panel" data-p="stay">
+      <div class="sect">
+        <div class="sh">🛏 Alloggio</div>
+        <div class="sb">
+          <div class="seg" id="lodSeg">
+            <button data-m="hotel">🏨 Hotel</button>
+            <button data-m="night">🌙 Notte fuori</button>
+            <button data-m="mix">🔀 Misto</button>
+          </div>
+          <div id="lodNightHint" class="hint hidden" style="margin-top:10px">Niente alloggio: si resta fuori e si prende il primo volo del mattino. Costo alloggio: 0 €.</div>
+          <div id="lodFields">
+            <label>Budget a persona a notte (€)</label>
+            <input type="number" id="lodBud" inputmode="decimal" placeholder="Es. 25">
+            <div class="hint" id="lodCalc" style="margin-top:8px"></div>
+            <div class="grid2" style="margin-top:4px">
+              <div><label>Costo effettivo prenotato (€)</label><input type="number" id="lodTotal" inputmode="decimal" placeholder="0"></div>
+              <div><label>Notti</label><input type="number" id="lodNights" inputmode="numeric" placeholder="0"></div>
+            </div>
+          </div>
+          <label>Note (dove, link, idee)</label>
+          <textarea id="lodNote" rows="2" placeholder="Es. zona centro, ostello X, appartamento di Y..."></textarea>
+          <div class="links" id="lodLinks"></div>
+        </div>
       </div>
     </div>
+
+    <div class="panel" data-p="crew">
+      <div class="sect">
+        <div class="sh">👥 Turni crew</div>
+        <div class="sb">
+          <div class="hint" id="dutySum"></div>
+          <div class="links"><a href="/swap/">🔄 Vedi Swap Planner</a></div>
+        </div>
+      </div>
+    </div>
+
     <div class="footer" id="dFoot"></div>
-    <button class="fab home" id="btnHomeFab2" aria-label="Home">&#8962;</button>
+
+    <div class="tabs" id="tripTabs">
+      <button class="on" data-p="recap"><span class="ti">📋</span>Riepilogo</button>
+      <button data-p="moves"><span class="ti">🚆</span>Voli</button>
+      <button data-p="stay"><span class="ti">🛏</span>Alloggio</button>
+      <button data-p="crew"><span class="ti">👥</span>Turni</button>
+    </div>
+    <button class="fab home" id="btnHomeFab2" aria-label="Home" style="bottom:calc(88px + env(safe-area-inset-bottom))">&#8962;</button>
   </div>
 </div>
 
@@ -488,6 +522,12 @@ function show(v){
   document.getElementById("vLauncher").classList.toggle("hidden",v!=="launcher");
   document.getElementById("vPlanner").classList.toggle("hidden",v!=="planner");
   document.getElementById("vTrip").classList.toggle("hidden",v!=="trip");
+  const tabs=document.getElementById("tripTabs");if(tabs)tabs.style.display=(v==="trip")?"flex":"none";
+  window.scrollTo(0,0);
+}
+function switchTab(p){
+  document.querySelectorAll("#tripTabs button").forEach(b=>b.classList.toggle("on",b.dataset.p===p));
+  document.querySelectorAll("#vTrip .panel").forEach(pn=>pn.classList.toggle("on",pn.dataset.p===p));
   window.scrollTo(0,0);
 }
 function openDrawer(){renderDrawerList();document.getElementById("drawer").classList.add("open");document.getElementById("scrim").classList.add("open");document.getElementById("drawer").setAttribute("aria-hidden","false");}
@@ -524,6 +564,7 @@ function eventDays(t){
 function renderTrip(){
   const t=cur();if(!t){show("planner");return;}
   show("trip");
+  switchTab("recap");
   document.getElementById("dName").textContent=t.name||"(senza nome)";
   const days=eventDays(t);
   document.getElementById("dMeta").textContent="📍 "+(t.loc||"—")+" · "+pretty(t.start)+" → "+pretty(t.end)+" · "+(t.parts||[]).map(partLabel).join(", ");
@@ -800,6 +841,7 @@ function init(){
     trips=trips.filter(x=>x.id!==t.id);save();
     curId=null;show("planner");
   };
+  document.querySelectorAll("#tripTabs button").forEach(b=>b.onclick=()=>switchTab(b.dataset.p));
   document.getElementById("btnAddTr").onclick=()=>{const t=cur();if(t)transportForm(t);};
   document.getElementById("btnImpFS").onclick=()=>{const t=cur();if(t)fsImport(t);};
   show("launcher");
