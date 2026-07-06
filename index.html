@@ -516,8 +516,32 @@ async function initSupabase(){
     sb.channel("triphub")
       .on("postgres_changes",{event:"*",schema:"public",table:"triphub_trips"},payload=>{
         if(payload.new&&mergeRows([payload.new])){save();refresh();}
+      })
+      .on("postgres_changes",{event:"*",schema:"public",table:"swap_recap"},payload=>{
+        if(payload.new)applySnapshotUpdate(payload.new);
       }).subscribe();
   }catch(e){console.warn("Sync non attiva:",e);setSync(false);}
+}
+function snapMatchesTrip(snap,t){
+  const norm=s=>String(s||"").toLowerCase().replace(/\s+/g,"");
+  if(norm(snap.name)===norm(t.name))return true;
+  if(snap.start_day&&snap.end_day&&t.start&&t.end&&!(snap.end_day<t.start||snap.start_day>t.end))return true;
+  return false;
+}
+function applySnapshotUpdate(snap){
+  let changed=false;
+  trips.forEach(t=>{
+    // aggiorna i viaggi che hanno già un riepilogo importato e che combaciano
+    if(t.swapSnap&&snapMatchesTrip(snap,t)){
+      t.swapSnap=snap;t.updated_at=new Date().toISOString();changed=true;
+    }
+  });
+  if(changed){
+    save();
+    if(curId&&view==="trip"&&cur()&&cur().swapSnap===snap){
+      renderSwapRecap(snap);renderRecap(cur());
+    }else if(curId&&view==="trip"){renderTrip();}
+  }
 }
 function refresh(){
   if(curId&&!cur()){curId=null;if(view==="trip")show("planner");}
@@ -750,16 +774,14 @@ async function swapImport(t){
   if(!sbReady){box.innerHTML='<div class="hint">Sync non attiva: riprova tra qualche secondo.</div>';return;}
   btn.textContent="Carico…";
   try{
-    const norm=s=>String(s||"").toLowerCase().replace(/\s+/g,"");
     const res=await sb.from("swap_recap").select("*");
     const all=res.data||[];
-    let snap=all.find(e=>norm(e.name)===norm(t.name));
-    if(!snap)snap=all.find(e=>e.start_day&&e.end_day&&!(e.end_day<t.start||e.start_day>t.end));
+    let snap=all.find(e=>snapMatchesTrip(e,t));
     if(!snap){
       box.innerHTML='<div class="hint">Nessun gruppo su Swap Planner combacia con questo viaggio. Aprilo su Swap Planner (stesso nome o stesse date) così il riepilogo viene generato, poi riprova.</div>';
       btn.textContent="↻ Importa riepilogo da Swap Planner";return;
     }
-    t.swapSnap=snap;touch(t);          // resta salvato nel viaggio
+    t.swapSnap=snap;touch(t);          // resta salvato e d'ora in poi si aggiorna da solo
     renderSwapRecap(snap);
     renderRecap(t);                    // aggiorna anche il riepilogo generale
   }catch(e){
@@ -788,6 +810,9 @@ function renderSwapRecap(snap){
   if(pend.length){h+='<div style="font-size:11px;color:var(--warn);font-weight:700;margin:8px 0 0">⏳ IN ATTESA · '+pend.length+'</div>'+pend.map(row).join("");}
   if(done.length){h+='<div style="font-size:11px;color:var(--ok);font-weight:700;margin:10px 0 0">✓ PRESI · '+done.length+'</div>'+done.map(row).join("");}
   h+='</div>';
+  if(snap&&snap.updated_at){
+    h+='<div class="hint" style="margin-top:8px;font-size:11px">🔄 Si aggiorna da solo quando cambia su Swap Planner · ultimo: '+esc((snap.updated_at||"").slice(0,16).replace("T"," "))+'</div>';
+  }
   box.innerHTML=h;
 }
 
