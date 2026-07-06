@@ -1,36 +1,37 @@
 <!DOCTYPE html>
-<html lang="it" data-theme="light">
+<html lang="it" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0c1526">
 <title>FlightScan</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#F2F6FA; --surface:#FFFFFF; --ink:#14202E; --muted:#5E6B7A; --line:#E2E8EF;
-    --accent:#138C8C; --accent-soft:#DCEFEF;
-    --rb-ok-bg:#E3F4EC; --rb-ok-fg:#1E7A52;
-    --rb-teso-bg:#FBEFD8; --rb-teso-fg:#8A5611;
-    --rb-rischio-bg:#FBE6E3; --rb-rischio-fg:#C0463C;
-    --shadow:0 1px 2px rgba(20,32,46,.05), 0 10px 26px rgba(20,32,46,.08);
-    --bar:#14202E;
+    --bg:#0c1526; --surface:#111c30; --ink:#eaf0fb; --muted:#8ba0c6; --line:#2a3a52;
+    --accent:#c6a35a; --accent-soft:#241f12;
+    --rb-ok-bg:#12301f; --rb-ok-fg:#5fd39a;
+    --rb-teso-bg:#2f2712; --rb-teso-fg:#e3bd63;
+    --rb-rischio-bg:#3a2024; --rb-rischio-fg:#ff9a94;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 26px rgba(0,0,0,.45);
+    --bar:#c6a35a;
   }
   [data-theme="dark"]{
-    --bg:#0F1722; --surface:#1A2532; --ink:#EAF0F6; --muted:#A6B3C2; --line:#2E3C4B;
-    --accent:#46D3D3; --accent-soft:#103838;
-    --rb-ok-bg:#15392A; --rb-ok-fg:#4FD295;
-    --rb-teso-bg:#3A2D12; --rb-teso-fg:#F0B84A;
-    --rb-rischio-bg:#3E211E; --rb-rischio-fg:#F0796E;
-    --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 26px rgba(0,0,0,.4);
-    --bar:#46D3D3;
+    --bg:#0c1526; --surface:#111c30; --ink:#eaf0fb; --muted:#8ba0c6; --line:#2a3a52;
+    --accent:#c6a35a; --accent-soft:#241f12;
+    --rb-ok-bg:#12301f; --rb-ok-fg:#5fd39a;
+    --rb-teso-bg:#2f2712; --rb-teso-fg:#e3bd63;
+    --rb-rischio-bg:#3a2024; --rb-rischio-fg:#ff9a94;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 26px rgba(0,0,0,.45);
+    --bar:#c6a35a;
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  html{-webkit-text-size-adjust:100%}
-  body{background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,sans-serif;line-height:1.45;
+  html{-webkit-text-size-adjust:100%;background:#0a0f1c}
+  body{background:radial-gradient(120% 80% at 50% -10%, #16233d 0%, #0c1526 55%, #0a0f1c 100%);background-attachment:fixed;color:var(--ink);font-family:'Inter',system-ui,sans-serif;line-height:1.45;
     padding:env(safe-area-inset-top) 0 calc(env(safe-area-inset-bottom) + 32px);font-variant-numeric:tabular-nums;
-    transition:background .25s, color .25s;}
+    min-height:100vh;}
   .wrap{max-width:520px;margin:0 auto;padding:0 18px}
 
   header{padding:18px 0 10px;display:flex;align-items:center;gap:12px}
@@ -130,7 +131,11 @@
   .field input{width:100%;border:none;border-bottom:1.5px solid var(--line);background:transparent;font-family:inherit;font-size:16px;color:var(--ink);padding:6px 0}
   .field input:focus{outline:none;border-color:var(--accent)}
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  .importbtn{width:100%;margin-top:10px;border:1px dashed var(--accent);background:transparent;color:var(--accent);font-family:inherit;font-weight:600;font-size:13px;border-radius:10px;padding:11px;cursor:pointer}
+  .triptype{display:flex;gap:4px;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:4px;margin-bottom:6px}
+  .triptype button{flex:1;border:0;background:transparent;color:var(--muted);font-family:inherit;font-size:12.5px;font-weight:700;padding:10px 6px;border-radius:9px;cursor:pointer;transition:background .12s,color .12s}
+  .triptype button.on{background:var(--accent);color:#fff}
+  .importbtn{width:100%;margin-top:10px;border:1px solid var(--line);background:linear-gradient(160deg,#1b2942,#111c30);color:var(--ink);font-family:inherit;font-weight:700;font-size:13.5px;border-radius:12px;padding:13px;cursor:pointer;box-shadow:var(--shadow)}
+  .importbtn.gold{border-color:var(--accent);color:var(--accent)}
   .cerca{width:100%;margin-top:20px;border:none;background:var(--accent);color:#fff;font-family:inherit;font-weight:700;font-size:15px;border-radius:11px;padding:13px;cursor:pointer;letter-spacing:.3px}
   /* departure-board mono for ticket data */
   .ep .code{font-family:'Space Mono',monospace;font-weight:700}
@@ -245,7 +250,7 @@
 <div class="wrap">
   <header>
     <div class="brand">Flight<b>Scan</b></div>
-    <button class="burger" id="themeBtn" onclick="toggleTheme()" aria-label="Cambia tema">&#9790;</button>
+    <a class="burger" href="/" aria-label="TripHub" style="text-decoration:none">&#8962;</a>
     <button class="burger" onclick="openTrips()" aria-label="Viaggi salvati">&#9776;</button>
   </header>
 
@@ -253,7 +258,7 @@
 
   <div class="panel" id="searchPanel">
     <div class="ptitle">Cerca un volo</div>
-    <button class="importbtn" onclick="openImport()">&#8595; Importa un gruppo da Swap Planner</button>
+    <button class="importbtn gold" onclick="openImport()">&#8595; Importa un gruppo da Swap Planner</button>
     <div class="field"><label>Partenza</label>
       <div class="ac">
         <div class="acbar"><input id="f-from" autocomplete="off" placeholder="Aeroporto o città"><button class="acclear" id="clear-from" onclick="clearField('from')" style="display:none" aria-label="Cancella">&#10005;</button></div>
@@ -266,14 +271,15 @@
         <div class="acdrop" id="drop-to"></div>
       </div>
     </div>
+    <div class="triptype" id="triptype">
+      <button type="button" data-tt="oneway" onclick="setTripType('oneway')">Solo andata</button>
+      <button type="button" data-tt="round" class="on" onclick="setTripType('round')">Andata e ritorno</button>
+      <button type="button" data-tt="multi" onclick="setTripType('multi')">Multi-tratta</button>
+    </div>
     <div class="row2">
       <div class="field"><label>Andata</label><input id="f-d1" type="date"></div>
-      <div class="field"><label>Ritorno</label><input id="f-d2" type="date"></div>
+      <div class="field" id="d2wrap"><label>Ritorno</label><input id="f-d2" type="date"></div>
     </div>
-    <label class="mcrow" style="display:flex;align-items:center;gap:9px;margin:6px 0 2px;cursor:pointer;font-size:14px">
-      <input type="checkbox" id="f-multi" style="width:20px;height:20px;flex:0 0 auto" onchange="toggleMulti()">
-      <span>Ritorno da un&#39;altra città (multi-tratta)</span>
-    </label>
     <div id="multiFields" style="display:none">
       <div class="field"><label>Ritorno · Partenza</label>
         <div class="ac">
@@ -334,7 +340,8 @@ var SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI
 // ---- stato ----
 var AIRPORTS=[], AIRMAP={};
 var SEL={from:null, to:null, rfrom:null, rto:null};
-var MULTI=false;
+var TRIPTYPE="round";  // oneway | round | multi
+var MULTI=false;       // compat
 var DROPCTX={from:null, to:null};
 var RESULTS={and:[], rit:[]};
 var dir="and", SAVED=[], OPTBYKEY={}, IMPORT_ROWS=[], IMPORT_EVENT="";
@@ -596,7 +603,7 @@ function pairsOf(F,T){ var p=[]; F.forEach(function(f){ T.forEach(function(t){ i
 async function doSearch(){
   var froms=selCodes("from"), tos=selCodes("to");
   if(!froms.length || !tos.length){ closeSearch(); setStatus("Aggiungi almeno una partenza e un arrivo.","err"); return; }
-  var d1=el("f-d1").value, d2=el("f-d2").value;
+  var d1=el("f-d1").value, d2=(TRIPTYPE==="oneway")?"":el("f-d2").value;
   if(!d1){ closeSearch(); setStatus("Scegli almeno la data di andata.","err"); return; }
   var minH=el("f-min").value||"1", maxH=el("f-max").value||"3";
   closeSearch(); updateRecap();
@@ -658,18 +665,19 @@ function setupAC(field){
 document.addEventListener("click", function(e){
   ["from","to","rfrom","rto"].forEach(function(f){ var elx=el("f-"+f); if(!elx)return; var ac=elx.closest(".ac"); if(ac && !ac.contains(e.target)){ el("drop-"+f).classList.remove("open"); } });
 });
-function toggleMulti(){
-  MULTI=el("f-multi").checked;
-  el("multiFields").style.display=MULTI?"":"none";
+function setTripType(tt){
+  TRIPTYPE=tt; MULTI=(tt==="multi");
+  document.querySelectorAll("#triptype button").forEach(function(b){ b.classList.toggle("on", b.dataset.tt===tt); });
+  el("multiFields").style.display=(tt==="multi")?"":"none";
+  el("d2wrap").style.display=(tt==="oneway")?"none":"";
   updateRecap();
 }
 
-var savedTheme="light"; try{ savedTheme=localStorage.getItem("fs.theme")||"light"; }catch(e){}
-setTheme(savedTheme);
+var savedTheme="dark";
+setTheme("dark");
 setupAC("from"); setupAC("to"); setupAC("rfrom"); setupAC("rto");
 ["f-d1","f-d2","f-pax"].forEach(function(id){ el(id).addEventListener("input", updateRecap); });
 (async function(){ await loadAirports(); openSearch(); })();
 </script>
-<a href="/" aria-label="TripHub" style="position:fixed;right:14px;bottom:max(16px,env(safe-area-inset-bottom));z-index:30;width:46px;height:46px;border-radius:50%;background:#ffffff;border:2px solid #1a1d24;color:#1a1d24;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:21px;line-height:1;box-shadow:0 3px 12px rgba(0,0,0,.28)">&#8962;</a>
 </body>
 </html>
