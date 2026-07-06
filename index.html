@@ -196,8 +196,11 @@
   .ev .ex b { font-size:14.5px; display:block; }
   .ev .ex span { font-size:12px; color:var(--muted); }
   .ev .est { font-size:15px; flex-shrink:0; }
-  .ev.done { opacity:.55; }
   .ev .parts { font-size:11px; color:var(--brass); margin-top:2px; }
+  .donehdr { width:100%; text-align:left; background:transparent; border:0; color:var(--muted);
+    font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.16em; text-transform:uppercase;
+    padding:18px 2px 10px; cursor:pointer; }
+  .donewrap .ev { opacity:.5; }
 
   /* ---------- duty grid ---------- */
   .dutygrid { overflow-x:auto; -webkit-overflow-scrolling:touch; }
@@ -519,7 +522,7 @@ const EKEY="triphub.events.v1";
 let events=[];
 const ALLPARTS=["SALIFR","AVILXI","NUZZMA","RUSANG","TIZIAN"];
 function saveEv(){try{localStorage.setItem(EKEY,JSON.stringify(events));}catch(e){}}
-function loadEv(){try{const s=localStorage.getItem(EKEY);if(s){const o=JSON.parse(s);if(Array.isArray(o))events=o;}}catch(e){}}
+function loadEv(){try{const s=localStorage.getItem(EKEY);if(s){const o=JSON.parse(s);if(Array.isArray(o))events=o;}}catch(e){}events.forEach(e=>{if(e.status==="idea")e.status="maybe";});}
 function touchEv(e){e.updated_at=new Date().toISOString();saveEv();pushEvent(e);}
 function seedEvents(){
   if(events.length)return;
@@ -533,16 +536,16 @@ function seedEvents(){
     S("Conan Gray","Bergamo","2026-06-03","","confirmed"),
     S("Maroon 5","Milano","2026-06-25","","confirmed"),
     S("30 anni Tiziana","Corfù","2026-06-30","2026-07-02","confirmed"),
-    S("Mad Cool","Madrid","2026-07-08","2026-07-11","idea"),
-    S("One Republic","Roma","2026-07-12","","idea"),
-    S("Bruno Mars","Milano","2026-07-14","","idea"),
-    S("Bad Bunny","Milano","2026-07-17","","idea"),
-    S("Levante","Bari","2026-07-18","","idea"),
-    S("Katy Perry","Lucca","2026-07-19","","idea"),
-    S("Frah Quintale","","2026-07-25","","idea"),
-    S("The Weeknd","Madrid","2026-08-28","","idea"),
-    S("Paul & Nina","Bari","2026-09-05","","idea"),
-    S("Shakira","Madrid","2026-10-10","","idea"),
+    S("Mad Cool","Madrid","2026-07-08","2026-07-11","maybe"),
+    S("One Republic","Roma","2026-07-12","","maybe"),
+    S("Bruno Mars","Milano","2026-07-14","","maybe"),
+    S("Bad Bunny","Milano","2026-07-17","","maybe"),
+    S("Levante","Bari","2026-07-18","","maybe"),
+    S("Katy Perry","Lucca","2026-07-19","","maybe"),
+    S("Frah Quintale","","2026-07-25","","maybe"),
+    S("The Weeknd","Madrid","2026-08-28","","maybe"),
+    S("Paul & Nina","Bari","2026-09-05","","maybe"),
+    S("Shakira","Madrid","2026-10-10","","maybe"),
     S("Giappone","","2026-11-03","2026-11-23","maybe"),
     S("Pitbull","Gdansk","2026-12-03","","maybe")
   ];
@@ -570,7 +573,7 @@ function pushTrip(t){
 function evRow(e){return{id:e.id,name:e.name,place:e.place,start_day:e.start,end_day:e.end,status:e.status,
   participants:(e.parts||[]).join(","),note:e.note||"",deleted:!!e.deleted,updated_at:e.updated_at||new Date().toISOString()};}
 function evOf(r){return{id:r.id,name:r.name||"",place:r.place||"",start:r.start_day||"",end:r.end_day||r.start_day||"",
-  status:r.status||"idea",parts:(r.participants!=null&&r.participants!=="")?r.participants.split(","):[],
+  status:r.status==="idea"?"maybe":(r.status||"maybe"),parts:(r.participants!=null&&r.participants!=="")?r.participants.split(","):[],
   note:r.note||"",deleted:!!r.deleted,updated_at:r.updated_at};}
 function pushEvent(e){
   if(!sbReady)return;
@@ -698,38 +701,50 @@ function closeDrawer(){document.getElementById("drawer").classList.remove("open"
 function partLabel(p){const d=CREW_DB[p];return d?d.name:p;}
 
 /* ================= render eventi ================= */
-const EVSTATUS={confirmed:"✅",maybe:"❓",idea:"⭘"};
+const EVSTATUS={confirmed:"✅",maybe:"❓"};
 function evDateLabel(e){
   if(!e.start)return"";
   if(e.end&&e.end!==e.start)return pretty(e.start)+" → "+pretty(e.end);
   return pretty(e.start);
 }
+let showDone=false;
+function evRowHtml(e){
+  const dd=e.start.split("-").map(Number);
+  const pcount=(e.parts||[]).length;
+  return '<a class="ev" href="#" data-id="'+e.id+'">'
+    +'<div class="ed"><span class="d">'+String(dd[2]).padStart(2,"0")+'</span><span class="m">'+MM[dd[1]-1]+'</span></div>'
+    +'<div class="ex"><b>'+esc(e.name||"(senza nome)")+'</b><span>'+(e.place?esc(e.place)+" · ":"")+esc(evDateLabel(e))+'</span>'
+    +(pcount?'<div class="parts">👥 '+pcount+'</div>':'')+'</div>'
+    +'<div class="est">'+(EVSTATUS[e.status]||"")+'</div></a>';
+}
 function renderEvents(){
   const box=document.getElementById("eventList");
-  const list=events.slice().sort((a,b)=>(a.start||"").localeCompare(b.start||""));
-  if(!list.length){box.innerHTML='<div class="empty" style="padding-top:40px"><div class="ico">🎟️</div><h2>Nessun evento</h2><p>Aggiungi il primo con il + in alto.</p></div>';return;}
+  const all=events.slice().sort((a,b)=>(a.start||"").localeCompare(b.start||""));
+  if(!all.length){box.innerHTML='<div class="empty" style="padding-top:40px"><div class="ico">🎟️</div><h2>Nessun evento</h2><p>Aggiungi il primo con il + in alto.</p></div>';return;}
   const today=todayStr();
+  const isPast=e=>(e.end&&e.end<today)||(!e.end&&e.start<today);
+  const upcoming=all.filter(e=>!isPast(e));
+  const done=all.filter(isPast);
   let html="",curM="";
-  list.forEach(e=>{
+  upcoming.forEach(e=>{
     const mk=(e.start||"").slice(0,7);
     if(mk!==curM){curM=mk;const a=e.start.split("-").map(Number);html+='<div class="emonth">'+MMFULL[a[1]-1]+" "+a[0]+'</div>';}
-    const past=e.end&&e.end<today||e.start<today&&!e.end;
-    const dd=e.start.split("-").map(Number);
-    const pcount=(e.parts||[]).length;
-    html+='<a class="ev'+(past?" done":"")+'" href="#" data-id="'+e.id+'">'
-      +'<div class="ed"><span class="d">'+String(dd[2]).padStart(2,"0")+'</span><span class="m">'+MM[dd[1]-1]+'</span></div>'
-      +'<div class="ex"><b>'+esc(e.name||"(senza nome)")+'</b><span>'+(e.place?esc(e.place)+" · ":"")+esc(evDateLabel(e))+'</span>'
-      +'<div class="parts">'+(pcount?("👥 "+pcount):"")+'</div></div>'
-      +'<div class="est">'+(EVSTATUS[e.status]||"")+'</div></a>';
+    html+=evRowHtml(e);
   });
+  if(!upcoming.length)html+='<div class="hint" style="padding:20px 4px">Nessun evento in programma. Aggiungine uno con il +.</div>';
+  if(done.length){
+    html+='<button class="donehdr" id="doneToggle">'+(showDone?"▾":"▸")+' Completati ('+done.length+')</button>';
+    if(showDone){html+='<div class="donewrap">';done.forEach(e=>html+=evRowHtml(e));html+='</div>';}
+  }
   box.innerHTML=html;
   box.querySelectorAll(".ev").forEach(a=>a.onclick=ev=>{ev.preventDefault();eventForm(events.find(x=>x.id===a.dataset.id));});
+  const dt=document.getElementById("doneToggle");if(dt)dt.onclick=()=>{showDone=!showDone;renderEvents();};
 }
 const MMFULL=["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
 
 function blankEvent(){
   const t=todayStr();
-  return{id:"ev_"+Date.now(),name:"",place:"",start:t,end:"",status:"idea",parts:ALLPARTS.slice(),note:"",deleted:false,updated_at:new Date().toISOString()};
+  return{id:"ev_"+Date.now(),name:"",place:"",start:t,end:"",status:"maybe",parts:ALLPARTS.slice(),note:"",deleted:false,updated_at:new Date().toISOString()};
 }
 function eventForm(e){
   const isNew=!events.some(x=>x.id===e.id);
@@ -742,9 +757,8 @@ function eventForm(e){
     +'<div class="grid2"><div><label>Dal</label><input type="date" id="eSt" value="'+esc(e.start)+'"></div>'
     +'<div><label>Al (opzionale)</label><input type="date" id="eEn" value="'+esc(e.end)+'"></div></div>'
     +'<label>Stato</label><div class="seg" id="eStat">'
-    +'<button data-s="confirmed"'+(e.status==="confirmed"?' class="on"':'')+'>✅ Sì</button>'
-    +'<button data-s="maybe"'+(e.status==="maybe"?' class="on"':'')+'>❓ Forse</button>'
-    +'<button data-s="idea"'+(e.status==="idea"?' class="on"':'')+'>⭘ Idea</button></div>'
+    +'<button data-s="confirmed"'+(e.status==="confirmed"?' class="on"':'')+'>✅ Confermato</button>'
+    +'<button data-s="maybe"'+(e.status!=="confirmed"?' class="on"':'')+'>❓ Forse</button></div>'
     +'<label>Chi partecipa</label><div class="plist" id="ePr">'+partRows+'</div>'
     +'<label>Note</label><textarea id="eNo" rows="2" placeholder="...">'+esc(e.note||"")+'</textarea>'
     +'<div style="margin-top:16px">'
