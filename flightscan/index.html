@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="it" data-theme="dark">
+<html lang="it">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -10,13 +10,16 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#0c1526; --surface:#111c30; --ink:#eaf0fb; --muted:#8ba0c6; --line:#2a3a52;
-    --accent:#c6a35a; --accent-soft:#241f12;
-    --rb-ok-bg:#12301f; --rb-ok-fg:#5fd39a;
-    --rb-teso-bg:#2f2712; --rb-teso-fg:#e3bd63;
-    --rb-rischio-bg:#3a2024; --rb-rischio-fg:#ff9a94;
-    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 26px rgba(0,0,0,.45);
-    --bar:#c6a35a;
+    --bg:#ffffff; --surface:#ffffff; --ink:#16202e; --muted:#5d6b80; --line:#e2e8ef;
+    --accent:#a97f2e; --accent-soft:#f3ead5;
+    --rb-ok-bg:#e3f4ec; --rb-ok-fg:#1e7a52;
+    --rb-teso-bg:#faf3dd; --rb-teso-fg:#8a6d1a;
+    --rb-rischio-bg:#fbe6e3; --rb-rischio-fg:#c0463c;
+    --shadow:0 1px 2px rgba(20,32,46,.05), 0 10px 26px rgba(20,32,46,.08);
+    --bar:#a97f2e;
+    --app-bg:radial-gradient(120% 80% at 50% -10%, #ffffff 0%, #eef2f8 55%, #e6ebf3 100%);
+    --app-bg-solid:#e6ebf3;
+    --glass:rgba(255,255,255,.6); --glass-brd:rgba(20,30,50,.12);
   }
   [data-theme="dark"]{
     --bg:#0c1526; --surface:#111c30; --ink:#eaf0fb; --muted:#8ba0c6; --line:#2a3a52;
@@ -26,10 +29,13 @@
     --rb-rischio-bg:#3a2024; --rb-rischio-fg:#ff9a94;
     --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 26px rgba(0,0,0,.45);
     --bar:#c6a35a;
+    --app-bg:radial-gradient(120% 80% at 50% -10%, #16233d 0%, #0c1526 55%, #0a0f1c 100%);
+    --app-bg-solid:#0a0f1c;
+    --glass:rgba(18,28,48,.55); --glass-brd:rgba(255,255,255,.14);
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  html{-webkit-text-size-adjust:100%;background:#0a0f1c}
-  body{background:radial-gradient(120% 80% at 50% -10%, #16233d 0%, #0c1526 55%, #0a0f1c 100%);background-attachment:fixed;color:var(--ink);font-family:'Inter',system-ui,sans-serif;line-height:1.45;
+  html{-webkit-text-size-adjust:100%;background:var(--app-bg-solid)}
+  body{background:var(--app-bg);background-attachment:fixed;color:var(--ink);font-family:'Inter',system-ui,sans-serif;line-height:1.45;
     padding:env(safe-area-inset-top) 0 calc(env(safe-area-inset-bottom) + 32px);font-variant-numeric:tabular-nums;
     min-height:100vh;}
   .wrap{max-width:520px;margin:0 auto;padding:0 18px}
@@ -61,7 +67,7 @@
   .sort select{border:none;background:transparent;font-family:inherit;font-size:13px;font-weight:600;color:var(--ink)}
 
   /* boarding pass */
-  .pass{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:15px;
+  .pass{position:relative;background:var(--glass);border:1px solid var(--glass-brd);border-radius:15px;backdrop-filter:blur(14px) saturate(1.25);-webkit-backdrop-filter:blur(14px) saturate(1.25);
     box-shadow:var(--shadow);margin-bottom:18px;opacity:0;transform:translateY(8px);animation:rise .4s ease forwards}
   @keyframes rise{to{opacity:1;transform:none}}
   @media (prefers-reduced-motion:reduce){.pass{animation:none;opacity:1;transform:none}}
@@ -211,7 +217,7 @@
   .rcf-sub{font-size:12px;color:var(--muted);line-height:1.55}
   .rcflight .x{cursor:pointer;opacity:.55;font-weight:700;font-size:13px;color:var(--muted);padding-left:4px}
   /* homepage search panel */
-  .panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:16px 16px 18px;margin-bottom:14px}
+  .panel{background:var(--glass);border:1px solid var(--glass-brd);border-radius:16px;box-shadow:var(--shadow);padding:16px 16px 18px;margin-bottom:14px;backdrop-filter:blur(16px) saturate(1.3);-webkit-backdrop-filter:blur(16px) saturate(1.3)}
   .ptitle{font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:600;margin-bottom:13px}
   .trip{position:relative}
   .rcbtns{display:flex;justify-content:flex-end;gap:7px;margin-bottom:10px}
@@ -250,7 +256,7 @@
 <div class="wrap">
   <header>
     <div class="brand">Flight<b>Scan</b></div>
-    <a class="burger" href="/" aria-label="TripHub" style="text-decoration:none">&#8962;</a>
+    <button class="burger" id="themeBtn" onclick="toggleTheme()" aria-label="Tema">&#128241;</button>
     <button class="burger" onclick="openTrips()" aria-label="Viaggi salvati">&#9776;</button>
   </header>
 
@@ -359,8 +365,18 @@ function selCodes(field){ return SEL[field]?SEL[field].codes.slice():[]; }
 function openSearch(){ el("searchPanel").style.display=""; updateRecap(); try{window.scrollTo(0,0);}catch(e){} }
 function closeSearch(){ el("searchPanel").style.display="none"; updateRecap(); }
 function toggleSearch(){ if(el("searchPanel").style.display==="none"){ openSearch(); } else { closeSearch(); } }
-function setTheme(t){ document.documentElement.setAttribute("data-theme",t); var b=el("themeBtn"); if(b) b.innerHTML=(t==="dark")?"&#9728;":"&#9790;"; try{localStorage.setItem("fs.theme",t);}catch(e){} }
-function toggleTheme(){ var cur=document.documentElement.getAttribute("data-theme")||"light"; setTheme(cur==="dark"?"light":"dark"); }
+function _fsSysDark(){return window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches;}
+function _fsPref(){var t="auto";try{t=localStorage.getItem("fs.theme")||"auto";}catch(e){}return t;}
+function applyThemeFS(){
+  var p=_fsPref();
+  var t=p==="auto"?(_fsSysDark()?"dark":"light"):p;
+  document.documentElement.setAttribute("data-theme",t);
+  var mc=document.querySelector('meta[name="theme-color"]'); if(mc) mc.setAttribute("content",t==="dark"?"#0c1526":"#e6ebf3");
+  var b=el("themeBtn"); if(b) b.innerHTML=(p==="auto")?"\uD83D\uDCF1":(t==="dark"?"\u2600":"\u263E");
+}
+function setTheme(t){ try{localStorage.setItem("fs.theme",t);}catch(e){} applyThemeFS(); }
+function toggleTheme(){ var order=["auto","light","dark"]; var i=order.indexOf(_fsPref()); setTheme(order[(i+1)%3]); }
+if(window.matchMedia){try{window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change",function(){if(_fsPref()==="auto")applyThemeFS();});}catch(e){}}
 
 // ---- aeroporti ----
 async function loadAirports(){
@@ -481,7 +497,7 @@ async function fetchTrips(){
   }
 }
 function renderTripsList(rows){
-  TRIPS=rows||[];
+  TRIPS=(rows||[]).slice().sort(function(a,b){ return String(a.date_out||"").localeCompare(String(b.date_out||"")); });
   if(!TRIPS.length){ el("tripsList").innerHTML='<div class="impmuted">Nessun viaggio salvato. Crea una ricerca, salva i voli e premi <b>Salva</b> nel resoconto.</div>'; return; }
   var html="";
   TRIPS.forEach(function(t,i){
@@ -676,8 +692,7 @@ function setTripType(tt){
   updateRecap();
 }
 
-var savedTheme="dark";
-setTheme("dark");
+applyThemeFS();
 setupAC("from"); setupAC("to"); setupAC("rfrom"); setupAC("rto");
 ["f-d1","f-d2","f-pax"].forEach(function(id){ el(id).addEventListener("input", updateRecap); });
 function applyPendingImport(){
@@ -703,5 +718,6 @@ function applyPendingImport(){
 }
 (async function(){ await loadAirports(); openSearch(); applyPendingImport(); })();
 </script>
+<a href="/" aria-label="TripHub" style="position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom));z-index:60;width:56px;height:56px;border-radius:50%;border:1px solid rgba(198,163,90,.5);background:linear-gradient(160deg,#1b2942,#111c30);color:#c6a35a;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:22px;line-height:1;box-shadow:0 8px 22px rgba(0,0,0,.5)">&#8962;</a>
 </body>
 </html>
