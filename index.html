@@ -15,28 +15,44 @@
      TRIPHUB · MERIDIAN — blu notte + ottone, strumenti di bordo
      ============================================================ */
   :root{
-    --navy-0:#0a0f1c;   /* fondo piu profondo */
-    --navy-1:#0c1526;   /* fondo */
-    --navy-2:#111c30;   /* superficie */
-    --navy-3:#1b2942;   /* superficie alta */
+    --navy-0:#0a0f1c; --navy-1:#0c1526; --navy-2:#111c30; --navy-3:#1b2942;
     --line:rgba(198,163,90,.22);
     --line-soft:rgba(255,255,255,.08);
-    --brass:#c6a35a;    /* ottone accento */
-    --brass-dim:#9c8047;
-    --ink:#eaf0fb;      /* testo principale */
-    --muted:#8ba0c6;    /* testo secondario */
+    --brass:#c6a35a; --brass-dim:#9c8047;
+    --ink:#eaf0fb; --muted:#8ba0c6;
     --ok:#5fd39a; --ok-bg:#12301f;
     --warn:#e3bd63; --warn-bg:#2f2712;
     --danger:#ff9a94; --danger-bg:#3a2024;
     --radius:16px;
+    --app-bg:radial-gradient(120% 80% at 50% -10%, #16233d 0%, #0c1526 55%, #0a0f1c 100%);
+    --app-bg-solid:#0a0f1c;
+    --glass:rgba(18,28,48,.55); --glass-brd:rgba(255,255,255,.14);
+    --surface:linear-gradient(160deg, var(--navy-3), var(--navy-2));
+    --surface-2:linear-gradient(160deg, var(--navy-2), rgba(17,28,48,.55));
+    --input-bg:rgba(10,15,28,.6);
+  }
+  html[data-theme="light"]{
+    --navy-0:#eef1f6; --navy-1:#f4f6fa; --navy-2:#ffffff; --navy-3:#ffffff;
+    --line:rgba(160,120,40,.28);
+    --line-soft:rgba(20,30,50,.10);
+    --brass:#a97f2e; --brass-dim:#8a6620;
+    --ink:#16202e; --muted:#5d6b80;
+    --ok:#1e7a52; --ok-bg:#e3f4ec;
+    --warn:#8a6d1a; --warn-bg:#faf3dd;
+    --danger:#c0463c; --danger-bg:#fbe6e3;
+    --app-bg:radial-gradient(120% 80% at 50% -10%, #ffffff 0%, #eef2f8 55%, #e6ebf3 100%);
+    --app-bg-solid:#e6ebf3;
+    --glass:rgba(255,255,255,.6); --glass-brd:rgba(20,30,50,.12);
+    --surface:#ffffff;
+    --surface-2:#ffffff;
+    --input-bg:#f4f6fa;
   }
   * { margin:0; padding:0; box-sizing:border-box; }
   html,body { height:100%; }
-  html { background:#0a0f1c; }
+  html { background:var(--app-bg-solid); }
   body {
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-    background:
-      radial-gradient(120% 80% at 50% -10%, #16233d 0%, var(--navy-1) 55%, var(--navy-0) 100%);
+    background:var(--app-bg);
     background-attachment:fixed;
     color:var(--ink);
     padding:max(16px,env(safe-area-inset-top)) 16px max(96px,calc(env(safe-area-inset-bottom) + 90px));
@@ -77,7 +93,7 @@
   .t1{--a:0deg;} .t2{--a:90deg;} .t3{--a:180deg;} .t4{--a:270deg;}
   .facebox { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
     border-radius:var(--radius);
-    background:linear-gradient(160deg, var(--navy-3), var(--navy-2));
+    background:var(--surface);
     border:1px solid var(--line);
     box-shadow:0 10px 28px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06);
     animation:cnt 24s linear infinite; transition:transform .12s, box-shadow .12s, border-color .12s; }
@@ -95,7 +111,7 @@
   /* ---------- FAB tondo (menu / casa) ---------- */
   .fab { position:fixed; right:18px; bottom:calc(18px + env(safe-area-inset-bottom)); z-index:60;
     width:56px; height:56px; border-radius:50%; border:1px solid var(--line);
-    background:linear-gradient(160deg, var(--navy-3), var(--navy-2)); color:var(--brass);
+    background:var(--surface); color:var(--brass);
     display:flex; align-items:center; justify-content:center; cursor:pointer;
     box-shadow:0 8px 22px rgba(0,0,0,.5); }
   .fab:active { transform:scale(.94); }
@@ -125,7 +141,7 @@
 
   /* ---------- trip cards ---------- */
   .trip { display:block; text-decoration:none; color:inherit; position:relative;
-    background:linear-gradient(160deg, var(--navy-2), rgba(17,28,48,.6)); border:1px solid var(--line-soft);
+    background:var(--surface-2); border:1px solid var(--line-soft);
     border-radius:var(--radius); padding:15px 16px 15px 20px; margin-bottom:11px; overflow:hidden; }
   .trip::before { content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--brass); opacity:.85; }
   .trip:active { transform:scale(.99); }
@@ -143,7 +159,7 @@
   .dhead { padding:2px 2px 14px; }
   .dhead h1 { font-size:25px; font-weight:800; letter-spacing:-.4px; }
   .dhead .meta { color:var(--muted); font-size:13px; margin-top:5px; line-height:1.5; }
-  .sect { background:linear-gradient(160deg, var(--navy-2), rgba(17,28,48,.55)); border:1px solid var(--line-soft);
+  .sect { background:var(--glass); border:1px solid var(--glass-brd); backdrop-filter:blur(14px) saturate(1.25); -webkit-backdrop-filter:blur(14px) saturate(1.25);
     border-radius:var(--radius); margin-bottom:12px; overflow:hidden; }
   .sect > .sh { display:flex; align-items:center; gap:9px; padding:14px 16px 12px; font-weight:700; font-size:14.5px;
     border-bottom:1px solid var(--line-soft); }
@@ -185,7 +201,7 @@
   .emonth { font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.2em; text-transform:uppercase;
     color:var(--brass); margin:16px 2px 8px; }
   .ev { display:flex; align-items:center; gap:12px; text-decoration:none; color:inherit;
-    background:linear-gradient(160deg, var(--navy-2), rgba(17,28,48,.55)); border:1px solid var(--line-soft);
+    background:var(--surface-2); border:1px solid var(--line-soft);
     border-radius:13px; padding:13px 14px; margin-bottom:9px; }
   .ev:active { transform:scale(.99); }
   .ev .ed { display:flex; flex-direction:column; align-items:center; justify-content:center; flex-shrink:0;
@@ -198,8 +214,8 @@
   .ev .est { font-size:15px; flex-shrink:0; }
   .ev .parts { font-size:11px; color:var(--brass); margin-top:2px; }
   .donehdr { width:100%; text-align:left; background:transparent; border:0; color:var(--muted);
-    font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.16em; text-transform:uppercase;
-    padding:18px 2px 10px; cursor:pointer; }
+    font-family:"IBM Plex Mono",monospace; font-size:12px; letter-spacing:.16em; text-transform:uppercase;
+    padding:16px 2px; margin-top:8px; cursor:pointer; border-top:1px solid var(--line-soft); }
   .donewrap .ev { opacity:.5; }
 
   /* ---------- duty grid ---------- */
@@ -215,13 +231,17 @@
   label { display:block; font-size:11.5px; font-weight:600; color:var(--muted); margin:13px 0 5px;
     text-transform:uppercase; letter-spacing:.05em; }
   input,select,textarea { width:100%; min-width:0; max-width:100%; border:1px solid rgba(255,255,255,.14);
-    border-radius:10px; padding:12px; font-size:15px; font-family:inherit; background:rgba(10,15,28,.6); color:var(--ink); }
+    border-radius:10px; padding:12px; font-size:15px; font-family:inherit; background:var(--input-bg); color:var(--ink); }
   input::placeholder,textarea::placeholder { color:#5b6b86; }
   input:focus,select:focus,textarea:focus { outline:none; border-color:var(--brass); }
   .grid2 { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px; }
   .grid2 > div { min-width:0; }
   input[type="date"] { -webkit-appearance:none; appearance:none; display:block; min-width:0; max-width:100%; height:47px; }
   .plist { margin-top:6px; border:1px solid var(--line-soft); border-radius:12px; overflow:hidden; }
+  .pchips { display:flex; flex-wrap:wrap; gap:8px; margin-top:6px; }
+  .pchip { border:1px solid rgba(255,255,255,.2); background:rgba(255,255,255,.04); border-radius:999px;
+    padding:9px 14px; font-size:13.5px; font-weight:700; color:var(--ink); cursor:pointer; font-family:inherit; }
+  .pchip.on { background:var(--brass); border-color:var(--brass); color:#0c1526; }
   .prow { display:flex; align-items:center; justify-content:space-between; width:100%; background:rgba(255,255,255,.03);
     border:0; border-top:1px solid var(--line-soft); padding:13px 14px; font-size:15px; font-weight:600; color:var(--ink);
     cursor:pointer; font-family:inherit; }
@@ -229,7 +249,7 @@
   .prow .ck { width:22px; height:22px; border-radius:50%; border:1.5px solid rgba(255,255,255,.25);
     display:flex; align-items:center; justify-content:center; font-size:13px; color:transparent; flex-shrink:0; }
   .prow.on .ck { background:var(--brass); border-color:var(--brass); color:#0c1526; }
-  .seg { display:flex; background:rgba(10,15,28,.6); border:1px solid var(--line-soft); border-radius:11px; padding:3px; gap:3px; margin-top:6px; }
+  .seg { display:flex; background:var(--input-bg); border:1px solid var(--line-soft); border-radius:11px; padding:3px; gap:3px; margin-top:6px; }
   .seg button { flex:1; border:0; background:transparent; border-radius:9px; padding:10px 6px; font-size:13px; font-weight:600; color:var(--muted); cursor:pointer; font-family:inherit; }
   .seg button.on { background:var(--brass); color:#0c1526; }
 
@@ -263,7 +283,7 @@
   /* ---------- tabs liquid glass ---------- */
   .tabs { position:fixed; left:50%; bottom:calc(16px + env(safe-area-inset-bottom)); transform:translateX(-50%);
     z-index:55; display:flex; gap:3px; padding:5px;
-    background:rgba(18,28,48,.55); border:1px solid rgba(255,255,255,.14); border-radius:18px;
+    background:var(--glass); border:1px solid var(--glass-brd); border-radius:18px;
     backdrop-filter:blur(18px) saturate(1.4); -webkit-backdrop-filter:blur(18px) saturate(1.4);
     box-shadow:0 10px 30px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.12); }
   .tabs button { border:0; background:transparent; color:var(--muted); cursor:pointer; font-family:inherit;
@@ -323,6 +343,7 @@
       <h2>Pronti a partire?</h2>
       <p>Crea un nuovo viaggio: evento, date, chi viene — e da lì voli, alloggio e budget.</p>
       <button class="btn primary" id="btnNewTrip" style="max-width:280px">+ Nuovo viaggio</button>
+      <button class="btn ghost" id="btnFromEvent" style="max-width:280px;margin-top:10px;width:100%">🎟️ Importa da Eventi</button>
       <p class="hint" style="margin-top:14px">I viaggi salvati sono nel menu ☰ in alto a destra.</p>
     </div>
     <button class="fab home" id="btnHomeFab" aria-label="Home">&#8962;</button>
@@ -736,6 +757,7 @@ function renderEvents(){
     html+='<button class="donehdr" id="doneToggle">'+(showDone?"▾":"▸")+' Completati ('+done.length+')</button>';
     if(showDone){html+='<div class="donewrap">';done.forEach(e=>html+=evRowHtml(e));html+='</div>';}
   }
+  html+='<div style="height:84px"></div>';
   box.innerHTML=html;
   box.querySelectorAll(".ev").forEach(a=>a.onclick=ev=>{ev.preventDefault();eventForm(events.find(x=>x.id===a.dataset.id));});
   const dt=document.getElementById("doneToggle");if(dt)dt.onclick=()=>{showDone=!showDone;renderEvents();};
@@ -748,8 +770,9 @@ function blankEvent(){
 }
 function eventForm(e){
   const isNew=!events.some(x=>x.id===e.id);
-  const partRows=ALLPARTS.map(c=>
-    '<button type="button" class="prow'+((e.parts||[]).includes(c)?" on":"")+'" data-c="'+c+'">'+CREW_DB[c].name+'<span class="ck">✓</span></button>').join("");
+  const customs=(e.parts||[]).filter(p=>!CREW_DB[p]);
+  const partChips=ALLPARTS.map(c=>
+    '<button type="button" class="pchip'+((e.parts||[]).includes(c)?" on":"")+'" data-c="'+c+'">'+CREW_DB[c].name+'</button>').join("");
   openModal(
     '<h3>'+(isNew?"Nuovo evento":"Modifica evento")+'</h3>'
     +'<label>Nome</label><input id="eNm" value="'+esc(e.name)+'" placeholder="Es. Mad Cool">'
@@ -759,7 +782,8 @@ function eventForm(e){
     +'<label>Stato</label><div class="seg" id="eStat">'
     +'<button data-s="confirmed"'+(e.status==="confirmed"?' class="on"':'')+'>✅ Confermato</button>'
     +'<button data-s="maybe"'+(e.status!=="confirmed"?' class="on"':'')+'>❓ Forse</button></div>'
-    +'<label>Chi partecipa</label><div class="plist" id="ePr">'+partRows+'</div>'
+    +'<label>Chi partecipa</label><div class="pchips" id="ePr">'+partChips+'</div>'
+    +'<label>Altri (separati da virgola)</label><input id="eCust" value="'+esc(customs.join(", "))+'" placeholder="Es. Marco">'
     +'<label>Note</label><textarea id="eNo" rows="2" placeholder="...">'+esc(e.note||"")+'</textarea>'
     +'<div style="margin-top:16px">'
     +'<button class="btn primary" id="impTrip">🧳 Crea viaggio da questo evento</button>'
@@ -768,7 +792,7 @@ function eventForm(e){
     +'<div class="mrow">'+(isNew?'':'<button class="btn danger" id="eDel">Elimina</button>')+'<button class="btn ghost" id="eCancel">Annulla</button><button class="btn primary" id="eSave">Salva</button></div>'
   );
   const sel=new Set(e.parts||[]);
-  mBody.querySelectorAll("#ePr .prow").forEach(b=>b.onclick=()=>{const c=b.dataset.c;if(sel.has(c))sel.delete(c);else sel.add(c);b.classList.toggle("on",sel.has(c));});
+  mBody.querySelectorAll("#ePr .pchip").forEach(b=>b.onclick=()=>{const c=b.dataset.c;if(sel.has(c))sel.delete(c);else sel.add(c);b.classList.toggle("on",sel.has(c));});
   let stat=e.status;
   mBody.querySelectorAll("#eStat button").forEach(b=>b.onclick=()=>{stat=b.dataset.s;mBody.querySelectorAll("#eStat button").forEach(x=>x.classList.toggle("on",x===b));});
   const collect=()=>{
@@ -778,7 +802,8 @@ function eventForm(e){
     e.end=mBody.querySelector("#eEn").value||"";
     if(e.end&&e.end<e.start)e.end="";
     e.status=stat;
-    e.parts=ALLPARTS.filter(c=>sel.has(c));
+    const cust=mBody.querySelector("#eCust").value.split(",").map(x=>x.trim()).filter(Boolean);
+    e.parts=ALLPARTS.filter(c=>sel.has(c)).concat(cust);
     e.note=mBody.querySelector("#eNo").value.trim();
   };
   mBody.querySelector("#eCancel").onclick=closeModal;
@@ -789,6 +814,18 @@ function eventForm(e){
 }
 
 /* ---- import evento -> altre app ---- */
+function pickEventForTrip(){
+  const up=events.filter(e=>{const t=todayStr();return !((e.end&&e.end<t)||(!e.end&&e.start<t));})
+    .sort((a,b)=>(a.start||"").localeCompare(b.start||""));
+  if(!up.length){openModal('<h3>Importa da Eventi</h3><p class="hint" style="margin-top:8px">Nessun evento in programma. Aggiungine uno nella pagina Eventi.</p><div class="mrow"><button class="btn ghost" id="iCancel">Chiudi</button></div>');mBody.querySelector("#iCancel").onclick=closeModal;return;}
+  openModal('<h3>Importa da Eventi</h3><p class="hint" style="margin-top:6px">Scegli l\'evento: creo il viaggio con date, luogo e partecipanti.</p>'
+    +'<div class="plist" style="margin-top:10px">'+up.map((e,i)=>
+      '<button type="button" class="prow" data-i="'+i+'"><span style="text-align:left;min-width:0"><b style="display:block;font-size:14px">'+esc(e.name||"(senza nome)")+'</b>'
+      +'<span style="font-size:12px;color:var(--muted)">'+(e.place?esc(e.place)+" · ":"")+esc(evDateLabel(e))+'</span></span><span class="ck">→</span></button>').join("")
+    +'</div><div class="mrow"><button class="btn ghost" id="iCancel">Annulla</button></div>');
+  mBody.querySelector("#iCancel").onclick=closeModal;
+  mBody.querySelectorAll(".prow").forEach(b=>b.onclick=()=>{importEventToTrip(up[Number(b.dataset.i)]);});
+}
 function importEventToTrip(e){
   // crea (o riusa) un viaggio con nome/date/luogo/partecipanti dell'evento
   let t=trips.find(x=>x.name.toLowerCase()===e.name.toLowerCase());
@@ -1153,16 +1190,41 @@ function transportForm(t){
 
 
 /* ================= impostazioni ================= */
+/* ================= tema (chiaro/scuro/auto, persistente per telefono) ================= */
+const THKEY="triphub.theme";  // 'auto' | 'light' | 'dark'
+function systemDark(){return window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches;}
+function themePref(){try{return localStorage.getItem(THKEY)||"auto";}catch(e){return"auto";}}
+function effTheme(){const p=themePref();return p==="auto"?(systemDark()?"dark":"light"):p;}
+function applyTheme(){
+  const t=effTheme();
+  document.documentElement.setAttribute("data-theme",t);
+  const m=document.querySelector('meta[name="theme-color"]');
+  if(m)m.setAttribute("content",t==="dark"?"#0c1526":"#e6ebf3");
+}
+function setThemePref(p){try{localStorage.setItem(THKEY,p);}catch(e){}applyTheme();}
+if(window.matchMedia){try{window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change",()=>{if(themePref()==="auto")applyTheme();});}catch(e){}}
+
 function settingsForm(){
+  const p=themePref();
   openModal(
     '<h3>Impostazioni</h3>'
-    +'<p class="hint" style="margin-top:10px">TripHub · versione Meridian.</p>'
+    +'<label style="margin-top:12px">Tema</label>'
+    +'<div class="seg" id="thSeg">'
+    +'<button data-t="light"'+(p==="light"?' class="on"':'')+'>☀️ Chiaro</button>'
+    +'<button data-t="dark"'+(p==="dark"?' class="on"':'')+'>🌙 Scuro</button>'
+    +'<button data-t="auto"'+(p==="auto"?' class="on"':'')+'>📱 Auto</button>'
+    +'</div>'
+    +'<p class="hint" style="margin-top:6px;text-transform:none;letter-spacing:0">La scelta resta salvata su questo telefono. "Auto" segue le impostazioni del telefono.</p>'
     +'<label style="margin-top:16px">Le altre app</label>'
     +'<div class="links"><a href="/swap/">🔄 Swap Planner</a><a href="/flightscan/">✈️ FlightScan</a></div>'
     +'<label style="margin-top:16px">Sincronizzazione</label>'
-    +'<p class="hint" id="setSync">…</p>'
+    +'<p class="hint" id="setSync" style="text-transform:none;letter-spacing:0">…</p>'
     +'<div class="mrow"><button class="btn ghost" id="sClose">Chiudi</button></div>'
   );
+  mBody.querySelectorAll("#thSeg button").forEach(b=>b.onclick=()=>{
+    setThemePref(b.dataset.t);
+    mBody.querySelectorAll("#thSeg button").forEach(x=>x.classList.toggle("on",x===b));
+  });
   document.getElementById("setSync").textContent=sbReady?"Attiva — i viaggi sono condivisi con la crew.":"Non attiva al momento.";
   mBody.querySelector("#sClose").onclick=closeModal;
 }
@@ -1179,8 +1241,8 @@ function initSpinPause(){
 /* ================= init ================= */
 function init(){
   load();loadEv();
+  applyTheme();
   initSpinPause();
-  const m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content","#0c1526");
   document.getElementById("btnSettings").onclick=settingsForm;
   document.getElementById("tileTrips").onclick=()=>show("planner");
   document.getElementById("tileEvents").onclick=()=>{renderEvents();show("events");};
@@ -1194,6 +1256,7 @@ function init(){
   document.getElementById("btnDrawerClose").onclick=closeDrawer;
   document.getElementById("scrim").onclick=closeDrawer;
   document.getElementById("btnNewTrip").onclick=()=>tripForm(blankTrip(),true);
+  document.getElementById("btnFromEvent").onclick=pickEventForTrip;
   document.getElementById("btnNewTrip2").onclick=()=>{closeDrawer();tripForm(blankTrip(),true);};
   document.getElementById("btnBack").onclick=()=>{curId=null;show("planner");};
   document.getElementById("btnEditTrip").onclick=()=>{const t=cur();if(t)tripForm(t,false);};
