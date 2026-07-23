@@ -618,9 +618,35 @@ function ptCandidates(dutyType,day){
   out.sort((a,b)=>(a.lock?1:0)-(b.lock?1:0));
   return out;
 }
+/* FLEXI come DATORE di swap.
+   Un flexi lavora SEMPRE lo stesso tipo, quindi entrambi i suoi blocchi sono dello stesso tipo:
+   per un flexE anche il blocco "nominalmente late" (fasi 8-12) e' lavorato early, percio' i suoi
+   off di fase 13 e 15 valgono esattamente come i normali 5 e 7 (1o e 3o giorno dopo fine blocco).
+   La formula standard dei partner trova solo le fasi 5 e 7: qui aggiungiamo le 13 e 15,
+   con la stessa regola usata per i part-time (ptAvailable). */
+function flexiCandidates(friend,dutyType,day){
+  const grp=groupNames(),out=[];
+  const selfName=(friend&&friend.code&&CREW_ALIAS[friend.code])?CREW_ALIAS[friend.code]:(friend?friend.name:null);
+  Object.keys(ROSTER_PEOPLE).forEach(rs=>{
+    const r=+rs;
+    (ROSTER_PEOPLE[r]||[]).forEach(p=>{
+      const fl=p[2];
+      if(fl!=="flexE"&&fl!=="flexL")return;
+      if((fl==="flexE")!==(dutyType==="early"))return;   // solo turni del suo tipo
+      const ph=phaseOf(r,day);
+      if(ph!==13&&ph!==15)return;                        // 1o e 3o off dopo il secondo blocco
+      if(p[0]===selfName)return;
+      const lock=grp.has(p[0])?"group":null;
+      out.push({roster:r,name:p[0],role:p[1],flexi:fl,lock,dec:lock?null:(decisions[dKey(r,p[0],day)]||null)});
+    });
+  });
+  out.sort((a,b)=>(a.lock?1:0)-(b.lock?1:0));
+  return out;
+}
 function availableCount(friend,partners,dutyType,day){
   return candidates(friend,partners,dutyType,day).filter(c=>!c.lock&&!c.dec).length
-       + ptCandidates(dutyType,day).filter(c=>!c.lock&&!c.dec).length;
+       + ptCandidates(dutyType,day).filter(c=>!c.lock&&!c.dec).length
+       + flexiCandidates(friend,dutyType,day).filter(c=>!c.lock&&!c.dec).length;
 }
 function securedSwapFor(fname,day){
   for(const k in decisions){const v=decisions[k];if(v.status==="secured"&&v.by===fname&&v.day===day){const pk=parseDKey(k);return{roster:pk.roster,name:pk.name};}}
@@ -1026,6 +1052,12 @@ function poolsHTML(w,day,shared){
     h+=`<div class="pool ptpool">
       <div class="ptop"><span class="rbadge ptb">PT</span><span class="ptag t">part-time liberi</span></div>
       ${pts.map(c=>candHTML(c,w.f,day)).join("")}</div>`;
+  }
+  const flx=filterMode(flexiCandidates(w.f,w.st.type,day));
+  if(flx.length){
+    h+=`<div class="pool ptpool">
+      <div class="ptop"><span class="rbadge ptb">FLEX</span><span class="ptag t">flexi liberi</span></div>
+      ${flx.map(c=>candHTML(c,w.f,day)).join("")}</div>`;
   }
   return h;
 }
