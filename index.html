@@ -336,7 +336,10 @@
     <div class="phead">
       <button class="back" id="btnHome">‹ Home</button>
       <div class="ttl">Viaggi</div>
-      <button class="back" id="btnDrawer" aria-label="I miei viaggi">☰</button>
+      <div style="display:flex;gap:6px">
+        <button class="back" id="btnSetP" aria-label="Impostazioni">⚙</button>
+        <button class="back" id="btnDrawer" aria-label="I miei viaggi">☰</button>
+      </div>
     </div>
     <div class="empty" style="padding-top:36px">
       <div class="ico">🧳</div>
@@ -354,7 +357,10 @@
     <div class="phead">
       <button class="back" id="btnHomeE">‹ Home</button>
       <div class="ttl">Eventi 2026</div>
-      <button class="back" id="btnAddEvent" aria-label="Nuovo evento">+</button>
+      <div style="display:flex;gap:6px">
+        <button class="back" id="btnSetE" aria-label="Impostazioni">⚙</button>
+        <button class="back" id="btnAddEvent" aria-label="Nuovo evento">+</button>
+      </div>
     </div>
     <div id="eventList"></div>
     <button class="fab home" id="btnHomeFabE" aria-label="Home">&#8962;</button>
@@ -365,6 +371,7 @@
     <div class="phead">
       <button class="back" id="btnBack">‹ Viaggi</button>
       <div style="display:flex;gap:8px">
+        <button class="back" id="btnSetT" aria-label="Impostazioni">⚙</button>
         <button class="btn ghost small" id="btnEditTrip">Modifica</button>
         <button class="btn danger small" id="btnDelTrip">Elimina</button>
       </div>
@@ -1244,6 +1251,7 @@ function init(){
   applyTheme();
   initSpinPause();
   document.getElementById("btnSettings").onclick=settingsForm;
+  ["btnSetP","btnSetE","btnSetT"].forEach(id=>{const b=document.getElementById(id);if(b)b.onclick=settingsForm;});
   document.getElementById("tileTrips").onclick=()=>show("planner");
   document.getElementById("tileEvents").onclick=()=>{renderEvents();show("events");};
   document.getElementById("btnHomeE").onclick=()=>show("launcher");
