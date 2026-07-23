@@ -361,7 +361,7 @@
     <button class="drawer-x" id="drawerX" aria-label="Chiudi">✕</button>
   </div>
   <div class="drawer-b">
-  <details class="panel" id="panelGruppi" open>
+  <details class="panel" id="panelGruppi">
     <summary>Gruppi</summary>
     <div class="pcont">
       <div id="groupList"></div>
@@ -576,9 +576,8 @@ function candidates(friend,partners,dutyType,day){
       const okType=(flag==="flexE"&&dutyType==="early")||(flag==="flexL"&&dutyType==="late");
       if(!okType)return;            // flexi: solo turni del suo tipo
     }
-    let lock=null;
-    if(grp.has(name))lock="group";
-    out.push({roster:r,name,role,flexi:isFlexi([name,role,flag])?flag:null,lock,dec:lock?null:(decisions[dKey(r,name,day)]||null)});
+    if(grp.has(name))return;            // chi e' nel gruppo non puo' dare swap: fuori dalla lista
+    out.push({roster:r,name,role,flexi:isFlexi([name,role,flag])?flag:null,lock:null,dec:decisions[dKey(r,name,day)]||null});
   }
   partners.forEach(r=>{
     (ROSTER_PEOPLE[r]||[]).forEach(p=>{
@@ -611,8 +610,8 @@ function ptCandidates(dutyType,day){
       // sui suoi giorni di riferimento (es. late finisce il 9, early il 12 = ~48h, non 60).
       if((fl==="ptE")!==(dutyType==="early"))return;
       if(!ptAvailable(r,fl,day))return;
-      const lock=grp.has(p[0])?"group":null;
-      out.push({roster:r,name:p[0],role:p[1],pt:fl,lock,dec:lock?null:(decisions[dKey(r,p[0],day)]||null)});
+      if(grp.has(p[0]))return;          // nel gruppo: non puo' dare swap
+      out.push({roster:r,name:p[0],role:p[1],pt:fl,lock:null,dec:decisions[dKey(r,p[0],day)]||null});
     });
   });
   out.sort((a,b)=>(a.lock?1:0)-(b.lock?1:0));
@@ -636,8 +635,8 @@ function flexiCandidates(friend,dutyType,day){
       const ph=phaseOf(r,day);
       if(ph!==13&&ph!==15)return;                        // 1o e 3o off dopo il secondo blocco
       if(p[0]===selfName)return;
-      const lock=grp.has(p[0])?"group":null;
-      out.push({roster:r,name:p[0],role:p[1],flexi:fl,lock,dec:lock?null:(decisions[dKey(r,p[0],day)]||null)});
+      if(grp.has(p[0]))return;          // nel gruppo: non puo' dare swap
+      out.push({roster:r,name:p[0],role:p[1],flexi:fl,lock:null,dec:decisions[dKey(r,p[0],day)]||null});
     });
   });
   out.sort((a,b)=>(a.lock?1:0)-(b.lock?1:0));
@@ -839,7 +838,12 @@ async function initRosterSync(){
 }
 
 /* ---------- gruppi (nel menu) ---------- */
-function openDrawer(){const d=document.getElementById("drawer"),s=document.getElementById("scrim");if(!d)return;d.classList.add("open");s.classList.add("open");d.setAttribute("aria-hidden","false");}
+function openDrawer(expandGroups){const d=document.getElementById("drawer"),s=document.getElementById("scrim");if(!d)return;
+  // il menu si apre sempre "pulito": nessun pannello e nessun editor gruppo aperto
+  d.querySelectorAll("details.panel").forEach(p=>p.open=false);
+  if(state.ui.editGroup){state.ui.editGroup=null;saveState();renderGroups();}
+  if(expandGroups===true){const g=document.getElementById("panelGruppi");if(g)g.open=true;}
+  d.classList.add("open");s.classList.add("open");d.setAttribute("aria-hidden","false");}
 function closeDrawer(){const d=document.getElementById("drawer"),s=document.getElementById("scrim");if(!d)return;d.classList.remove("open");s.classList.remove("open");d.setAttribute("aria-hidden","true");}
 function deleteGroup(id){
   if(state.events.length<=1){alert("È l'unico gruppo: usa 'Azzera scelte' per ripulirlo.");return;}
@@ -1375,7 +1379,7 @@ function init(){
   loadRoster();loadState();
   state.cur=null;               // all'apertura nessun gruppo: schermata di benvenuto
   loadDec();
-  document.getElementById("welcomeMenu").onclick=openDrawer;
+  document.getElementById("welcomeMenu").onclick=()=>openDrawer(true);
   const wS=document.getElementById("wStart"),wE=document.getElementById("wEnd");
   const _t=new Date(),_p=x=>String(x).padStart(2,"0");
   const _today=_t.getFullYear()+"-"+_p(_t.getMonth()+1)+"-"+_p(_t.getDate());
@@ -1400,7 +1404,7 @@ function init(){
   // copia resoconto
   document.getElementById("copyRecap").onclick=copyRecap;
   // drawer (menu hamburger)
-  document.getElementById("hambBtn").onclick=openDrawer;
+  document.getElementById("hambBtn").onclick=()=>openDrawer(false);
   document.getElementById("drawerX").onclick=closeDrawer;
   document.getElementById("scrim").onclick=closeDrawer;
   applyTheme();
