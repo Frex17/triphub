@@ -222,6 +222,13 @@
     .day:hover{box-shadow:0 3px 10px rgba(15,30,49,.1)}
   }
   /* gruppi nel menu */
+  .wglab{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin:0 0 8px}
+  .wgrow{display:flex;flex-direction:column;align-items:flex-start;gap:3px;width:100%;
+    border:1.5px solid var(--line);background:var(--card);border-radius:11px;
+    padding:12px 14px;margin-bottom:8px;cursor:pointer;font-family:inherit;text-align:left}
+  .wgrow:active{transform:scale(.99)}
+  .wgrow .wgn{font-size:15px;font-weight:700;color:var(--ink)}
+  .wgrow .wgd{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--muted)}
   .grow{display:flex;align-items:stretch;gap:6px;width:100%;
     border:1.5px solid var(--line);background:var(--card);border-radius:9px;margin-bottom:6px;overflow:hidden}
   .grow.on{border-color:var(--amber);background:var(--amber-bg)}
@@ -323,8 +330,8 @@
         <input type="date" id="wEnd" style="width:100%;border:1.5px solid var(--muted);border-radius:11px;padding:11px;font-size:14px;font-family:inherit;background:var(--paper);color:var(--ink);box-sizing:border-box;min-width:0"></div>
     </div>
     <button id="welcomeNew" style="width:100%;margin-top:16px;background:var(--ink);color:var(--paper);border:0;border-radius:12px;padding:13px;font-size:15px;font-weight:600;cursor:pointer">Crea gruppo</button>
-    <button id="welcomeMenu" style="width:100%;margin-top:10px;background:transparent;color:var(--ink);border:1.5px solid var(--muted);border-radius:12px;padding:12px;font-size:15px;font-weight:600;cursor:pointer">I miei gruppi</button>
   </div>
+  <div id="wGroups" style="max-width:320px;margin:26px auto 0;text-align:left"></div>
 </div>
 
 <div class="filters" style="display:none">
@@ -906,6 +913,18 @@ function bindGroupEditor(){
   document.getElementById("addPart").onclick=()=>{addParticipantByCode(nfc.value);nfc.value="";};
   nfc.onkeydown=e=>{if(e.key==="Enter"){addParticipantByCode(nfc.value);nfc.value="";}};
 }
+function escHTML(s){return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+function renderWelcomeGroups(){
+  const box=document.getElementById("wGroups");if(!box)return;
+  const ordered=state.events.slice().sort((a,b)=>String(a.start||"").localeCompare(String(b.start||"")));
+  if(!ordered.length){box.innerHTML="";return;}
+  box.innerHTML='<div class="wglab">I tuoi gruppi</div>'+ordered.map(e=>
+    `<button class="wgrow" data-g="${e.id}">
+       <span class="wgn">${escHTML(e.name||"(senza nome)")}</span>
+       <span class="wgd">${pretty(e.start)} → ${pretty(e.end)}</span>
+     </button>`).join("");
+  box.querySelectorAll(".wgrow").forEach(b=>b.onclick=()=>{switchEvent(b.dataset.g);window.scrollTo(0,0);});
+}
 function renderGroups(){
   const gl=document.getElementById("groupList");if(!gl)return;
   const ordered=state.events.slice().sort((a,b)=>String(a.start||"").localeCompare(String(b.start||"")));
@@ -931,6 +950,7 @@ function renderGroups(){
     else renderGroups();
   });
   if(state.ui.editGroup&&state.events.some(e=>e.id===state.ui.editGroup))bindGroupEditor();
+  renderWelcomeGroups();   // la lista in home segue sempre i gruppi reali
 }
 
 /* ---------- filtri ---------- */
@@ -1379,7 +1399,7 @@ function init(){
   loadRoster();loadState();
   state.cur=null;               // all'apertura nessun gruppo: schermata di benvenuto
   loadDec();
-  document.getElementById("welcomeMenu").onclick=()=>openDrawer(true);
+  const _wm=document.getElementById("welcomeMenu");if(_wm)_wm.onclick=()=>openDrawer(true);
   const wS=document.getElementById("wStart"),wE=document.getElementById("wEnd");
   const _t=new Date(),_p=x=>String(x).padStart(2,"0");
   const _today=_t.getFullYear()+"-"+_p(_t.getMonth()+1)+"-"+_p(_t.getDate());
