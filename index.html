@@ -7,7 +7,7 @@
 <link rel="manifest" href="/manifest.json">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="TripHub">
 <meta name="theme-color" content="#0c1526">
 <script>(function(){var ua=navigator.userAgent;var os=/android/i.test(ua)?"android":((/iPad|iPhone|iPod/.test(ua)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1))?"ios":"other");document.documentElement.setAttribute("data-os",os);})();</script>
@@ -297,6 +297,23 @@
   html[data-os="android"] .sect, html[data-os="android"] .tabs { backdrop-filter:none; -webkit-backdrop-filter:none; }
   html[data-os="android"] .sect { background:var(--surface-2); border-color:var(--line-soft); box-shadow:0 2px 10px rgba(8,14,28,.28); }
   html[data-os="android"] .tabs { background:var(--navy-2); border-color:var(--line-soft); box-shadow:0 8px 24px rgba(8,14,28,.4); }
+
+  /* ---------- home: niente scroll, sta tutto in schermo ---------- */
+  html.nohome-scroll, html.nohome-scroll body { overflow:hidden; overscroll-behavior:none; height:100%; }
+
+  /* ---------- barra app in basso (liquid glass) ---------- */
+  .appnav { position:fixed; left:50%; bottom:calc(14px + env(safe-area-inset-bottom)); transform:translateX(-50%);
+    z-index:70; display:flex; gap:2px; padding:6px;
+    background:var(--glass); border:1px solid var(--glass-brd); border-radius:22px;
+    backdrop-filter:blur(20px) saturate(1.5); -webkit-backdrop-filter:blur(20px) saturate(1.5);
+    box-shadow:0 10px 30px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.10); }
+  .appnav a, .appnav button { border:0; background:transparent; cursor:pointer; font-family:inherit;
+    text-decoration:none; color:var(--muted); display:flex; flex-direction:column; align-items:center; gap:3px;
+    padding:8px 14px; border-radius:16px; font-size:10px; font-weight:700; letter-spacing:.02em; min-width:62px; }
+  .appnav .ai { font-size:19px; line-height:1; }
+  .appnav .on { color:var(--brass); background:rgba(198,163,90,.14); }
+  html[data-os="android"] .appnav { backdrop-filter:none; -webkit-backdrop-filter:none;
+    background:var(--navy-2); border-color:var(--line-soft); box-shadow:0 8px 24px rgba(8,14,28,.45); }
 </style>
 </head>
 <body>
@@ -350,7 +367,6 @@
       <button class="btn ghost" id="btnFromEvent" style="max-width:280px;margin-top:10px;width:100%">🎟️ Importa da Eventi</button>
     </div>
     <div id="plannerTrips"></div>
-    <button class="fab home" id="btnHomeFab" aria-label="Home">&#8962;</button>
   </div>
 
   <!-- ============ EVENTI ============ -->
@@ -364,7 +380,6 @@
       </div>
     </div>
     <div id="eventList"></div>
-    <button class="fab home" id="btnHomeFabE" aria-label="Home">&#8962;</button>
   </div>
 
   <!-- ============ DETTAGLIO VIAGGIO ============ -->
@@ -458,12 +473,19 @@
       <button data-p="stay"><span class="ti">🛏</span>Alloggio</button>
       <button data-p="crew"><span class="ti">👥</span>Turni</button>
     </div>
-    <button class="fab home" id="btnHomeFab2" aria-label="Home" style="bottom:calc(88px + env(safe-area-inset-bottom))">&#8962;</button>
   </div>
 </div>
 
 <!-- ============ DRAWER VIAGGI ============ -->
 <div class="scrim" id="scrim"></div>
+<nav class="appnav" id="appNav" style="display:none">
+  <button data-go="launcher"><span class="ai">&#8962;</span>Home</button>
+  <button data-go="planner"><span class="ai">🧳</span>Viaggi</button>
+  <button data-go="events"><span class="ai">🎟️</span>Eventi</button>
+  <a href="/swap/"><span class="ai">🔄</span>Swap</a>
+  <a href="/flightscan/"><span class="ai">✈️</span>Voli</a>
+</nav>
+
 <aside class="drawer" id="drawer" aria-hidden="true">
   <div class="dh"><b>I miei viaggi</b><button class="dclose" id="btnDrawerClose">✕</button></div>
   <div class="dbody" id="tripList"></div>
@@ -719,6 +741,14 @@ function show(v){
   document.getElementById("vEvents").classList.toggle("hidden",v!=="events");
   document.getElementById("vTrip").classList.toggle("hidden",v!=="trip");
   const tabs=document.getElementById("tripTabs");if(tabs)tabs.style.display=(v==="trip")?"flex":"none";
+  const nav=document.getElementById("appNav");
+  if(nav){
+    // la barra serve nelle sotto-pagine; nel dettaglio viaggio comandano le sue schede
+    nav.style.display=(v==="planner"||v==="events")?"flex":"none";
+    nav.querySelectorAll("[data-go]").forEach(b=>b.classList.toggle("on",b.dataset.go===v));
+  }
+  // in home non c'è nulla da scorrere: blocca il rimbalzo
+  document.documentElement.classList.toggle("nohome-scroll",v==="launcher");
   if(v==="planner")renderPlannerTrips();
   window.scrollTo(0,0);
 }
@@ -1234,8 +1264,6 @@ function settingsForm(){
     +'<button data-t="auto"'+(p==="auto"?' class="on"':'')+'>📱 Auto</button>'
     +'</div>'
     +'<p class="hint" style="margin-top:6px;text-transform:none;letter-spacing:0">La scelta resta salvata su questo telefono. "Auto" segue le impostazioni del telefono.</p>'
-    +'<label style="margin-top:16px">Le altre app</label>'
-    +'<div class="links"><a href="/swap/">🔄 Swap Planner</a><a href="/flightscan/">✈️ FlightScan</a></div>'
     +'<label style="margin-top:16px">Sincronizzazione</label>'
     +'<p class="hint" id="setSync" style="text-transform:none;letter-spacing:0">…</p>'
     +'<div class="mrow"><button class="btn ghost" id="sClose">Chiudi</button></div>'
@@ -1263,15 +1291,13 @@ function init(){
   applyTheme();
   initSpinPause();
   document.getElementById("btnSettings").onclick=settingsForm;
+  document.querySelectorAll("#appNav [data-go]").forEach(b=>b.onclick=()=>show(b.dataset.go));
   ["btnSetP","btnSetE","btnSetT"].forEach(id=>{const b=document.getElementById(id);if(b)b.onclick=settingsForm;});
   document.getElementById("tileTrips").onclick=()=>show("planner");
   document.getElementById("tileEvents").onclick=()=>{renderEvents();show("events");};
   document.getElementById("btnHomeE").onclick=()=>show("launcher");
-  document.getElementById("btnHomeFabE").onclick=()=>show("launcher");
   document.getElementById("btnAddEvent").onclick=()=>eventForm(blankEvent());
   document.getElementById("btnHome").onclick=()=>show("launcher");
-  document.getElementById("btnHomeFab").onclick=()=>show("launcher");
-  document.getElementById("btnHomeFab2").onclick=()=>show("launcher");
   document.getElementById("btnDrawer").onclick=openDrawer;
   document.getElementById("btnDrawerClose").onclick=closeDrawer;
   document.getElementById("scrim").onclick=closeDrawer;
@@ -1293,7 +1319,15 @@ function init(){
   document.getElementById("btnImpSwap").onclick=()=>{const t=cur();if(t)swapImport(t);};
   document.getElementById("tripToSwap").onclick=()=>{const t=cur();if(t)importTripToSwap(t);};
   document.getElementById("tripToFS").onclick=()=>{const t=cur();if(t)importTripToFS(t);};
-  show("launcher");
+  // arrivo da un'altra app della suite: /?go=planner oppure /?go=events
+  let start="launcher";
+  try{
+    const g=new URLSearchParams(location.search).get("go");
+    if(g==="planner"||g==="events")start=g;
+    if(g)history.replaceState({},"","/");
+  }catch(e){}
+  if(start==="events")renderEvents();
+  show(start);
   initSupabase();
 }
 init();
