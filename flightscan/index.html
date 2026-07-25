@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#0c1526">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>FlightScan</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -37,7 +39,7 @@
   *{box-sizing:border-box;margin:0;padding:0}
   html{-webkit-text-size-adjust:100%;background:var(--app-bg-solid)}
   body{background:var(--app-bg);background-attachment:fixed;color:var(--ink);font-family:'Inter',system-ui,sans-serif;line-height:1.45;
-    padding:env(safe-area-inset-top) 0 calc(env(safe-area-inset-bottom) + 32px);font-variant-numeric:tabular-nums;
+    padding:env(safe-area-inset-top) 0 calc(env(safe-area-inset-bottom) + 104px);font-variant-numeric:tabular-nums;
     min-height:100vh;}
   .wrap{max-width:520px;margin:0 auto;padding:0 18px}
 
@@ -222,6 +224,19 @@
   html[data-os="ios"] .modal{background:var(--glass);border-color:var(--glass-brd);backdrop-filter:blur(26px) saturate(1.5);-webkit-backdrop-filter:blur(26px) saturate(1.5)}
   /* Android: material — superfici piene, niente blur */
   html[data-os="android"] .panel, html[data-os="android"] .pass{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--surface);border-color:var(--line)}
+
+  /* ---------- barra app in basso ---------- */
+  .appnav{position:fixed;left:50%;bottom:calc(14px + env(safe-area-inset-bottom));transform:translateX(-50%);
+    z-index:70;display:flex;gap:2px;padding:6px;border-radius:22px;
+    background:var(--glass);border:1px solid var(--glass-brd);
+    backdrop-filter:blur(20px) saturate(1.5);-webkit-backdrop-filter:blur(20px) saturate(1.5);
+    box-shadow:0 10px 30px rgba(0,0,0,.35)}
+  .appnav a,.appnav span.on{display:flex;flex-direction:column;align-items:center;gap:3px;
+    padding:8px 12px;border-radius:16px;min-width:58px;text-decoration:none;
+    font-size:10px;font-weight:700;color:var(--muted);font-family:inherit}
+  .appnav .ai{font-size:18px;line-height:1}
+  .appnav span.on{color:var(--accent);background:var(--accent-soft)}
+  html[data-os="android"] .appnav{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--surface);box-shadow:0 8px 24px rgba(0,0,0,.35)}
 </style>
 </head>
 <body>
@@ -699,6 +714,13 @@ function applyPendingImport(){
 }
 (async function(){ await loadAirports(); openSearch(); applyPendingImport(); })();
 </script>
-<a href="/" aria-label="TripHub" style="position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom));z-index:60;width:56px;height:56px;border-radius:50%;border:1px solid rgba(198,163,90,.5);background:linear-gradient(160deg,#1b2942,#111c30);color:#c6a35a;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:22px;line-height:1;box-shadow:0 8px 22px rgba(0,0,0,.5)">&#8962;</a>
+<nav class="appnav" id="appNav">
+  <a href="/"><span class="ai">&#8962;</span>Home</a>
+  <a href="/?go=planner"><span class="ai">🧳</span>Viaggi</a>
+  <a href="/?go=events"><span class="ai">🎟️</span>Eventi</a>
+  <a href="/swap/"><span class="ai">🔄</span>Swap</a>
+  <span class="on"><span class="ai">✈️</span>Voli</span>
+</nav>
+
 </body>
 </html>
