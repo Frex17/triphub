@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>(function(){var ua=navigator.userAgent;var os=/android/i.test(ua)?"android":((/iPad|iPhone|iPod/.test(ua)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1))?"ios":"other");document.documentElement.setAttribute("data-os",os);})();</script>
 <style>
   :root{
     --night:#0F1E31; --night-2:#16293f;
@@ -299,6 +300,12 @@
   body.dark .rtitle{color:var(--ink)}
   body.dark .clashnote{color:var(--amber)}
   body.dark .free,body.dark .hint{color:var(--muted)}
+
+  /* ---------- adattamento piattaforma (data-os) ----------
+     iOS: liquid glass sul menu laterale (le tabelle turni restano piene per leggibilità).
+     Android: resta tutto a superfici piene, com'è. */
+  html[data-os="ios"] .drawer{background:rgba(241,242,239,.78);backdrop-filter:blur(26px) saturate(1.5);-webkit-backdrop-filter:blur(26px) saturate(1.5)}
+  html[data-os="ios"] body.dark .drawer{background:rgba(15,23,34,.66)}
 </style>
 </head>
 <body>
