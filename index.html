@@ -347,8 +347,8 @@
       <p>Crea un nuovo viaggio: evento, date, chi viene — e da lì voli, alloggio e budget.</p>
       <button class="btn primary" id="btnNewTrip" style="max-width:280px">+ Nuovo viaggio</button>
       <button class="btn ghost" id="btnFromEvent" style="max-width:280px;margin-top:10px;width:100%">🎟️ Importa da Eventi</button>
-      <p class="hint" style="margin-top:14px">I viaggi salvati sono nel menu ☰ in alto a destra.</p>
     </div>
+    <div id="plannerTrips"></div>
     <button class="fab home" id="btnHomeFab" aria-label="Home">&#8962;</button>
   </div>
 
@@ -696,6 +696,7 @@ function refresh(){
   if(curId&&!cur()){curId=null;if(view==="trip")show("planner");}
   if(curId&&view==="trip")renderTrip();
   if(document.getElementById("drawer").classList.contains("open"))renderDrawerList();
+  if(view==="planner")renderPlannerTrips();
 }
 
 /* ================= budget alloggio ================= */
@@ -717,6 +718,7 @@ function show(v){
   document.getElementById("vEvents").classList.toggle("hidden",v!=="events");
   document.getElementById("vTrip").classList.toggle("hidden",v!=="trip");
   const tabs=document.getElementById("tripTabs");if(tabs)tabs.style.display=(v==="trip")?"flex":"none";
+  if(v==="planner")renderPlannerTrips();
   window.scrollTo(0,0);
 }
 function switchTab(p){
@@ -860,19 +862,29 @@ function importTripToFS(t){
   window.location.href="/flightscan/?to="+encodeURIComponent(t.loc||"")+"&d1="+(t.start||"")+(t.end&&t.end!==t.start?("&d2="+t.end):"")+"&name="+encodeURIComponent(t.name||"");
 }
 
+function tripCardHTML(t){
+  const b=budgetOf(t);
+  let bdg='<span class="bdg na">alloggio —</span>';
+  if(b.night)bdg='<span class="bdg ok">🌙 notte fuori</span>';
+  else if(b.bud>0)bdg='<span class="bdg ok">🛏 '+eur(b.bud)+'</span>';
+  return '<a class="trip" href="#" data-id="'+t.id+'">'
+    +'<div class="t1"><span class="nm">'+esc(t.name||"(senza nome)")+'</span><span class="dt">'+pretty(t.start)+' → '+pretty(t.end)+'</span></div>'
+    +'<div class="t2"><span class="loc">📍 '+esc(t.loc||"—")+' · '+(t.parts||[]).length+' 👥</span>'+bdg+'</div></a>';
+}
+function sortedTrips(){return trips.slice().sort((a,b)=>(a.start||"").localeCompare(b.start||""));}
+function renderPlannerTrips(){
+  const box=document.getElementById("plannerTrips");if(!box)return;
+  const active=sortedTrips();
+  if(!active.length){box.innerHTML="";return;}
+  box.innerHTML='<div class="emonth" style="margin-top:6px">I tuoi viaggi</div>'
+    +active.map(tripCardHTML).join("")+'<div style="height:84px"></div>';
+  box.querySelectorAll(".trip").forEach(a=>a.onclick=e=>{e.preventDefault();openTrip(a.dataset.id);});
+}
 function renderDrawerList(){
   const list=document.getElementById("tripList");
-  const active=trips.slice().sort((a,b)=>(a.start||"").localeCompare(b.start||""));
+  const active=sortedTrips();
   if(!active.length){list.innerHTML='<div class="hint" style="padding:20px 6px">Nessun viaggio salvato. Creane uno con il pulsante qui sotto.</div>';return;}
-  list.innerHTML=active.map(t=>{
-    const b=budgetOf(t);
-    let bdg='<span class="bdg na">alloggio —</span>';
-    if(b.night)bdg='<span class="bdg ok">🌙 notte fuori</span>';
-    else if(b.bud>0)bdg='<span class="bdg ok">🛏 '+eur(b.bud)+'</span>';
-    return '<a class="trip" href="#" data-id="'+t.id+'">'
-      +'<div class="t1"><span class="nm">'+esc(t.name||"(senza nome)")+'</span><span class="dt">'+pretty(t.start)+' → '+pretty(t.end)+'</span></div>'
-      +'<div class="t2"><span class="loc">📍 '+esc(t.loc||"—")+' · '+(t.parts||[]).length+' 👥</span>'+bdg+'</div></a>';
-  }).join("");
+  list.innerHTML=active.map(tripCardHTML).join("");
   list.querySelectorAll(".trip").forEach(a=>a.onclick=e=>{e.preventDefault();closeDrawer();openTrip(a.dataset.id);});
 }
 
