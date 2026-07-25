@@ -81,7 +81,7 @@
     font-weight:600;font-size:12px;letter-spacing:.04em;padding:5px 9px;border-radius:5px;color:var(--night);cursor:pointer}
   .seg-sm button.on{background:#fff;box-shadow:0 1px 2px rgba(15,30,49,.15)}
 
-  .wrap{max-width:680px;margin:0 auto;padding:12px 12px 104px}
+  .wrap{max-width:680px;margin:0 auto;padding:12px 12px calc(104px + env(safe-area-inset-bottom))}
 
   .recap{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--green);border-radius:10px;margin:12px 0;padding:11px 14px}
   .rtitle{font-family:"Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.07em;
@@ -310,18 +310,24 @@
   html[data-os="ios"] body.dark .drawer{background:rgba(15,23,34,.66)}
 
   /* ---------- barra app in basso ---------- */
-  .appnav{position:fixed;left:50%;bottom:calc(14px + env(safe-area-inset-bottom));transform:translateX(-50%);
-    z-index:70;display:flex;gap:2px;padding:6px;border-radius:22px;
-    background:rgba(241,242,239,.72);border:1px solid rgba(20,30,50,.12);
-    backdrop-filter:blur(20px) saturate(1.5);-webkit-backdrop-filter:blur(20px) saturate(1.5);
-    box-shadow:0 10px 30px rgba(7,14,24,.22)}
-  body.dark .appnav{background:rgba(15,23,34,.66);border-color:rgba(255,255,255,.12);box-shadow:0 10px 30px rgba(0,0,0,.45)}
-  .appnav a,.appnav span.on{display:flex;flex-direction:column;align-items:center;gap:3px;
-    padding:8px 12px;border-radius:16px;min-width:58px;text-decoration:none;
-    font-size:10px;font-weight:700;color:var(--muted);font-family:inherit}
-  .appnav .ai{font-size:18px;line-height:1}
-  .appnav span.on{color:var(--amber);background:var(--amber-bg)}
-  html[data-os="android"] .appnav{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--card);box-shadow:0 8px 24px rgba(7,14,24,.3)}
+  .appnav{--nav-bg:rgba(255,255,255,.72);--nav-solid:#ffffff;--nav-brd:rgba(20,30,50,.12);
+    --nav-mut:#5d6b80;--nav-on:#a97f2e;--nav-on-bg:rgba(169,127,46,.13)}
+  body.dark .appnav {--nav-bg:rgba(16,25,42,.72);--nav-solid:#111c30;--nav-brd:rgba(255,255,255,.12);
+    --nav-mut:#8ba0c6;--nav-on:#c6a35a;--nav-on-bg:rgba(198,163,90,.16)}
+  .appnav{position:fixed;left:0;right:0;bottom:0;z-index:70;
+    display:flex;align-items:stretch;
+    padding:6px 8px calc(6px + env(safe-area-inset-bottom));
+    background:var(--nav-bg);border-top:1px solid var(--nav-brd);
+    backdrop-filter:blur(22px) saturate(1.5);-webkit-backdrop-filter:blur(22px) saturate(1.5);
+    box-shadow:0 -6px 26px rgba(0,0,0,.22)}
+  .appnav a,.appnav button,.appnav span.on{
+    flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+    padding:8px 2px;border-radius:14px;text-decoration:none;
+    font-family:inherit;font-size:10px;font-weight:700;letter-spacing:.02em;
+    color:var(--nav-mut);background:transparent;border:0;cursor:pointer}
+  .appnav .ai{font-size:20px;line-height:1}
+  .appnav .on{color:var(--nav-on);background:var(--nav-on-bg)}
+  html[data-os="android"] .appnav{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--nav-solid)}
 </style>
 </head>
 <body>
