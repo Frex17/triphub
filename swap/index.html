@@ -222,6 +222,10 @@
     .day:hover{box-shadow:0 3px 10px rgba(15,30,49,.1)}
   }
   /* gruppi nel menu */
+  .wchips{display:flex;flex-wrap:wrap;gap:8px}
+  .wchip{border:1.5px solid var(--line);background:var(--card);border-radius:999px;
+    padding:10px 15px;font-size:14px;font-weight:700;color:var(--ink);cursor:pointer;font-family:inherit}
+  .wchip.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
   .wglab{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin:0 0 8px}
   .wgrow{display:flex;flex-direction:column;align-items:flex-start;gap:3px;width:100%;
     border:1.5px solid var(--line);background:var(--card);border-radius:11px;
@@ -320,7 +324,7 @@
   <div style="font-size:44px;line-height:1">✈</div>
   <h2 style="margin:16px 0 6px;font-size:22px;color:var(--ink)">Pronti per un nuovo planning</h2>
   <p style="color:var(--muted);font-size:14px;max-width:300px;margin:0 auto 22px;line-height:1.5">Crea un nuovo gruppo qui sotto o riapri uno di quelli esistenti.</p>
-  <div style="max-width:320px;margin:0 auto;text-align:left">
+  <div id="wForm" style="max-width:320px;margin:0 auto;text-align:left">
     <label style="display:block;font-size:12px;font-weight:600;color:var(--muted);margin:0 0 5px">Nome gruppo</label>
     <input id="wName" placeholder="Es. Mad Cool 2026" style="width:100%;border:1.5px solid var(--muted);border-radius:11px;padding:12px;font-size:15px;font-family:inherit;background:var(--paper);color:var(--ink);box-sizing:border-box">
     <div style="display:flex;gap:10px;margin-top:12px">
@@ -331,6 +335,7 @@
     </div>
     <button id="welcomeNew" style="width:100%;margin-top:16px;background:var(--ink);color:var(--paper);border:0;border-radius:12px;padding:13px;font-size:15px;font-weight:600;cursor:pointer">Crea gruppo</button>
   </div>
+  <div id="wSetup" style="max-width:320px;margin:22px auto 0;text-align:left;display:none"></div>
   <div id="wGroups" style="max-width:320px;margin:26px auto 0;text-align:left"></div>
 </div>
 
@@ -913,6 +918,63 @@ function bindGroupEditor(){
   document.getElementById("addPart").onclick=()=>{addParticipantByCode(nfc.value);nfc.value="";};
   nfc.onkeydown=e=>{if(e.key==="Enter"){addParticipantByCode(nfc.value);nfc.value="";}};
 }
+/* Pannello di setup subito dopo la creazione: partecipanti senza passare dal menu */
+function showGroupSetup(id){
+  const e=state.events.find(x=>x.id===id);if(!e)return;
+  const form=document.getElementById("wForm"),setup=document.getElementById("wSetup"),list=document.getElementById("wGroups");
+  if(!setup)return;
+  if(form)form.style.display="none";
+  if(list)list.style.display="none";
+  setup.style.display="";
+  const draw=()=>{
+    const chips=Object.keys(CREW_DB).map(code=>{
+      const on=(e.participants||[]).includes(code);
+      return `<button type="button" class="wchip${on?" on":""}" data-c="${code}">${CREW_DB[code].name}</button>`;
+    }).join("");
+    const extra=(e.participants||[]).filter(c=>!CREW_DB[c]);
+    setup.innerHTML=`
+      <div class="wglab">Chi partecipa</div>
+      <div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:2px">${escHTML(e.name||"(senza nome)")}</div>
+      <div class="wgd" style="margin-bottom:12px">${pretty(e.start)} → ${pretty(e.end)}</div>
+      <div class="wchips">${chips}</div>
+      ${extra.length?('<div class="wgd" style="margin-top:8px">Altri: '+extra.map(escHTML).join(", ")+'</div>'):""}
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <input type="text" id="wsCode" placeholder="ALTRO CREWCODE" style="flex:1;min-width:0;text-transform:uppercase;font-family:'IBM Plex Mono',monospace;border:1.5px solid var(--line);border-radius:11px;padding:11px;font-size:14px;background:var(--paper);color:var(--ink);box-sizing:border-box">
+        <button id="wsAdd" style="flex:0 0 auto;background:transparent;color:var(--ink);border:1.5px solid var(--line);border-radius:11px;padding:11px 14px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">+</button>
+      </div>
+      <button id="wsOpen" style="width:100%;margin-top:16px;background:var(--ink);color:var(--paper);border:0;border-radius:12px;padding:13px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">Apri il gruppo</button>
+      <button id="wsBack" style="width:100%;margin-top:8px;background:transparent;color:var(--muted);border:0;padding:10px;font-size:14px;cursor:pointer;font-family:inherit">Più tardi</button>`;
+    setup.querySelectorAll(".wchip").forEach(b=>b.onclick=()=>{
+      const c=b.dataset.c;e.participants=e.participants||[];
+      if(e.participants.includes(c))e.participants=e.participants.filter(x=>x!==c);
+      else e.participants.push(c);
+      e.participants.sort((a,b2)=>((CREW_DB[a]?CREW_DB[a].roster:99)-(CREW_DB[b2]?CREW_DB[b2].roster:99)));
+      saveState();pushEvent(e);draw();
+    });
+    const codeI=setup.querySelector("#wsCode");
+    const addExtra=()=>{
+      const code=(codeI.value||"").trim().toUpperCase();codeI.value="";
+      if(!code)return;
+      if(!CREW_DB[code]){alert("Crewcode sconosciuto: "+code+".\nDimmi nome e roster e lo aggiungo all'anagrafica.");return;}
+      if((e.participants||[]).includes(code)){alert("Già nel gruppo.");return;}
+      e.participants=(e.participants||[]).concat([code]);
+      e.participants.sort((a,b2)=>((CREW_DB[a]?CREW_DB[a].roster:99)-(CREW_DB[b2]?CREW_DB[b2].roster:99)));
+      saveState();pushEvent(e);draw();
+    };
+    setup.querySelector("#wsAdd").onclick=addExtra;
+    codeI.onkeydown=k=>{if(k.key==="Enter")addExtra();};
+    setup.querySelector("#wsOpen").onclick=()=>{hideGroupSetup();switchEvent(e.id);window.scrollTo(0,0);};
+    setup.querySelector("#wsBack").onclick=()=>{hideGroupSetup();};
+  };
+  draw();
+}
+function hideGroupSetup(){
+  const form=document.getElementById("wForm"),setup=document.getElementById("wSetup"),list=document.getElementById("wGroups");
+  if(setup){setup.style.display="none";setup.innerHTML="";}
+  if(form)form.style.display="";
+  if(list)list.style.display="";
+  renderWelcomeGroups();
+}
 function escHTML(s){return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
 function renderWelcomeGroups(){
   const box=document.getElementById("wGroups");if(!box)return;
@@ -1410,9 +1472,10 @@ function init(){
     let st=wS.value||_today,en=wE.value||st;
     if(en<st)en=st;
     const e={id:"ev_"+Date.now(),name:nm,start:st,end:en,participants:[]};
-    state.events.push(e);pushEvent(e);
+    state.events.push(e);saveState();pushEvent(e);
     document.getElementById("wName").value="";
-    switchEvent(e.id);
+    renderWelcomeGroups();
+    showGroupSetup(e.id);      // chiedi subito i partecipanti, senza passare dal menu
   };
   document.getElementById("addEvent").onclick=addNewEvent;
   document.getElementById("crewReset").onclick=()=>{
