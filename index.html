@@ -10,6 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="TripHub">
 <meta name="theme-color" content="#0c1526">
+<script>(function(){var ua=navigator.userAgent;var os=/android/i.test(ua)?"android":((/iPad|iPhone|iPod/.test(ua)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1))?"ios":"other");document.documentElement.setAttribute("data-os",os);})();</script>
 <style>
   /* ============================================================
      TRIPHUB · MERIDIAN — blu notte + ottone, strumenti di bordo
@@ -151,7 +152,6 @@
   .trip .loc { font-size:13px; color:var(--muted); }
   .bdg { font-size:11.5px; font-weight:600; border-radius:999px; padding:3px 9px; white-space:nowrap; }
   .bdg.ok { background:var(--ok-bg); color:var(--ok); }
-  .bdg.over { background:var(--warn-bg); color:var(--warn); }
   .bdg.na { background:rgba(255,255,255,.06); color:var(--muted); }
 
   /* ---------- dettaglio viaggio ---------- */
@@ -287,6 +287,16 @@
   .panel.on { display:block; animation:fadein .22s ease; }
   @keyframes fadein { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
   /* quando siamo in un viaggio, spazio extra in fondo per la tab bar */
+
+  /* ---------- adattamento piattaforma (data-os) ---------- */
+  /* iOS: liquid glass pieno, anche su menu e modali */
+  html[data-os="ios"] .drawer { background:var(--glass); backdrop-filter:blur(26px) saturate(1.5); -webkit-backdrop-filter:blur(26px) saturate(1.5); }
+  html[data-os="ios"] dialog#modal { background:var(--glass); border-color:var(--glass-brd); backdrop-filter:blur(26px) saturate(1.5); -webkit-backdrop-filter:blur(26px) saturate(1.5); }
+  html[data-os="ios"] dialog#modal::backdrop { backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }
+  /* Android: material — superfici piene, niente blur, ombre nette */
+  html[data-os="android"] .sect, html[data-os="android"] .tabs { backdrop-filter:none; -webkit-backdrop-filter:none; }
+  html[data-os="android"] .sect { background:var(--surface-2); border-color:var(--line-soft); box-shadow:0 2px 10px rgba(8,14,28,.28); }
+  html[data-os="android"] .tabs { background:var(--navy-2); border-color:var(--line-soft); box-shadow:0 8px 24px rgba(8,14,28,.4); }
 </style>
 </head>
 <body>
