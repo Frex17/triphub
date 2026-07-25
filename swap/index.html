@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Swap Planner</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -79,7 +81,7 @@
     font-weight:600;font-size:12px;letter-spacing:.04em;padding:5px 9px;border-radius:5px;color:var(--night);cursor:pointer}
   .seg-sm button.on{background:#fff;box-shadow:0 1px 2px rgba(15,30,49,.15)}
 
-  .wrap{max-width:680px;margin:0 auto;padding:12px 12px 70px}
+  .wrap{max-width:680px;margin:0 auto;padding:12px 12px 104px}
 
   .recap{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--green);border-radius:10px;margin:12px 0;padding:11px 14px}
   .rtitle{font-family:"Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.07em;
@@ -306,6 +308,20 @@
      Android: resta tutto a superfici piene, com'è. */
   html[data-os="ios"] .drawer{background:rgba(241,242,239,.78);backdrop-filter:blur(26px) saturate(1.5);-webkit-backdrop-filter:blur(26px) saturate(1.5)}
   html[data-os="ios"] body.dark .drawer{background:rgba(15,23,34,.66)}
+
+  /* ---------- barra app in basso ---------- */
+  .appnav{position:fixed;left:50%;bottom:calc(14px + env(safe-area-inset-bottom));transform:translateX(-50%);
+    z-index:70;display:flex;gap:2px;padding:6px;border-radius:22px;
+    background:rgba(241,242,239,.72);border:1px solid rgba(20,30,50,.12);
+    backdrop-filter:blur(20px) saturate(1.5);-webkit-backdrop-filter:blur(20px) saturate(1.5);
+    box-shadow:0 10px 30px rgba(7,14,24,.22)}
+  body.dark .appnav{background:rgba(15,23,34,.66);border-color:rgba(255,255,255,.12);box-shadow:0 10px 30px rgba(0,0,0,.45)}
+  .appnav a,.appnav span.on{display:flex;flex-direction:column;align-items:center;gap:3px;
+    padding:8px 12px;border-radius:16px;min-width:58px;text-decoration:none;
+    font-size:10px;font-weight:700;color:var(--muted);font-family:inherit}
+  .appnav .ai{font-size:18px;line-height:1}
+  .appnav span.on{color:var(--amber);background:var(--amber-bg)}
+  html[data-os="android"] .appnav{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--card);box-shadow:0 8px 24px rgba(7,14,24,.3)}
 </style>
 </head>
 <body>
@@ -1484,6 +1500,13 @@ function init(){
 }
 init();
 </script>
-<a href="/" aria-label="TripHub" style="position:fixed;right:18px;bottom:max(18px,env(safe-area-inset-bottom));z-index:30;width:56px;height:56px;border-radius:50%;border:1px solid rgba(198,163,90,.6);background:linear-gradient(160deg,#1b2942,#111c30);color:#c6a35a;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:22px;line-height:1;box-shadow:0 6px 20px rgba(0,0,0,.35)">&#8962;</a>
+<nav class="appnav" id="appNav">
+  <a href="/"><span class="ai">&#8962;</span>Home</a>
+  <a href="/?go=planner"><span class="ai">🧳</span>Viaggi</a>
+  <a href="/?go=events"><span class="ai">🎟️</span>Eventi</a>
+  <span class="on"><span class="ai">🔄</span>Swap</span>
+  <a href="/flightscan/"><span class="ai">✈️</span>Voli</a>
+</nav>
+
 </body>
 </html>
