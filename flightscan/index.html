@@ -45,7 +45,6 @@
     font-size:17px;color:var(--ink);cursor:pointer;display:flex;align-items:center;justify-content:center}
   .brand{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:25px;flex:1}
   .brand b{color:var(--accent);font-weight:700}
-  .tripcount{font-size:12px;font-weight:600;color:var(--accent);border:1px solid var(--accent-soft);border-radius:20px;padding:5px 11px;background:var(--surface)}
 
   .demo{background:var(--accent-soft);color:var(--accent);border-radius:10px;font-size:12px;padding:8px 12px;margin:0 0 14px;text-align:center;line-height:1.4}
 
@@ -53,7 +52,6 @@
   .trip .dest{font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:600}
   .trip .meta{font-size:13px;color:var(--muted);margin-top:2px}
   .trip .meta b{color:var(--ink);font-weight:600}
-  .fromswap{font-size:11px;color:var(--accent);font-weight:600;letter-spacing:.3px;margin-top:9px}
 
   .tabs{display:flex;gap:8px;margin:16px 0 6px}
   .tab{flex:1;text-align:center;padding:10px;border-radius:11px;border:1px solid var(--line);background:var(--surface);
@@ -128,7 +126,6 @@
   .drawer.open{transform:none}
   .dtitle{font-family:'Space Grotesk',sans-serif;font-size:23px;font-weight:600;margin-bottom:4px}
   .dclose{position:absolute;top:18px;right:18px;width:34px;height:34px;border:1px solid var(--line);background:transparent;border-radius:9px;color:var(--ink);font-size:16px;cursor:pointer}
-  .sec{font-size:11px;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);font-weight:700;margin:22px 0 10px}
   .seg{display:flex;gap:8px;background:var(--bg);border:1px solid var(--line);border-radius:11px;padding:4px}
   .seg button{flex:1;border:none;background:transparent;font-family:inherit;font-weight:600;font-size:13.5px;color:var(--muted);padding:8px;border-radius:8px;cursor:pointer}
   .seg button.on{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
@@ -148,7 +145,7 @@
   .ep .tm{font-family:'Space Mono',monospace;font-weight:400}
   .mid .fn{font-family:'Space Mono',monospace}
   .stub .dur{font-family:'Space Mono',monospace;font-weight:700}
-  .tripcount,.footline{font-family:'Space Mono',monospace}
+  .footline{font-family:'Space Mono',monospace}
   .status{padding:26px 6px;text-align:center;color:var(--muted);font-size:13.5px}
   .status .spin{width:22px;height:22px;border:2.5px solid var(--line);border-top-color:var(--accent);border-radius:50%;margin:0 auto 12px;animation:sp .8s linear infinite}
   @keyframes sp{to{transform:rotate(360deg)}}
@@ -169,23 +166,13 @@
   .imperr{color:var(--rb-rischio-fg);background:var(--rb-rischio-bg);border-radius:10px;padding:14px;font-size:13px;line-height:1.5}
   .impmuted{color:var(--muted);font-size:13px;text-align:center;padding:18px}
   /* empty state */
-  .empty{text-align:center;color:var(--muted);padding:44px 12px;line-height:1.6}
   .empty .eplane{font-size:34px;color:var(--accent);opacity:.85;margin-bottom:10px}
   .empty .ettl{font-family:'Space Grotesk',sans-serif;font-size:19px;font-weight:600;color:var(--ink);margin-bottom:6px}
   /* collapsible theme */
-  .themebox{margin-top:28px;border-top:1px solid var(--line);padding-top:14px}
-  .themebox summary{font-size:11px;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);font-weight:700;cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between}
-  .themebox summary::-webkit-details-marker{display:none}
-  .themebox summary::after{content:"+";color:var(--muted);font-size:15px}
-  .themebox[open] summary::after{content:"\2013"}
-  .themebox .seg{margin-top:12px}
   /* autocomplete + chips */
   .ac{position:relative}
   .acbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;border-bottom:1.5px solid var(--line);padding:5px 0}
   .acbar:focus-within{border-color:var(--accent)}
-  .chips{display:flex;flex-wrap:wrap;gap:6px}
-  .chip{display:inline-flex;align-items:center;gap:7px;background:var(--accent-soft);color:var(--accent);border-radius:8px;padding:5px 9px;font-size:12.5px;font-weight:600}
-  .chip .cc{font-family:'Space Mono',monospace}
   .chip .x{cursor:pointer;opacity:.65;font-weight:700;font-size:14px;line-height:1}
   .acbar input{flex:1;min-width:100px;border:none;background:transparent;font-family:inherit;font-size:16px;color:var(--ink);padding:4px 0}
   .acbar input:focus{outline:none}
@@ -364,7 +351,6 @@ function selCodes(field){ return SEL[field]?SEL[field].codes.slice():[]; }
 // ---- menu / tema ----
 function openSearch(){ el("searchPanel").style.display=""; updateRecap(); try{window.scrollTo(0,0);}catch(e){} }
 function closeSearch(){ el("searchPanel").style.display="none"; updateRecap(); }
-function toggleSearch(){ if(el("searchPanel").style.display==="none"){ openSearch(); } else { closeSearch(); } }
 function _fsSysDark(){return window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches;}
 function _fsPref(){var t="auto";try{t=localStorage.getItem("fs.theme")||"auto";}catch(e){}return t;}
 function applyThemeFS(){
@@ -597,13 +583,6 @@ function render(){
 }
 
 function setStatus(html,cls){ var s=el("status"); s.className=cls?("status "+cls):""; s.innerHTML=html||""; }
-function showEmpty(){
-  el("demoBanner").style.display="none";
-  el("tabsBar").style.display="none"; el("resBar").style.display="none";
-  el("resn").textContent=""; el("list").innerHTML="";
-  setStatus('<div class="empty"><div class="eplane">&#9992;</div><div class="ettl">Pronto al decollo</div><div>Apri il menu <b>&#9776;</b>, aggiungi partenza, arrivo e date.<br>Oppure importa un gruppo da Swap Planner.</div></div>','');
-}
-
 // ---- ricerca multi-tratta (lato app) ----
 async function fetchPair(from,to,date,minH,maxH){
   var url="/api/search?from="+from+"&to="+to+"&date="+date+"&minH="+minH+"&maxH="+maxH;
