@@ -309,32 +309,32 @@
   html[data-os="ios"] .drawer{background:rgba(241,242,239,.78);backdrop-filter:blur(26px) saturate(1.5);-webkit-backdrop-filter:blur(26px) saturate(1.5)}
   html[data-os="ios"] body.dark .drawer{background:rgba(15,23,34,.66)}
 
-  /* ---------- barra app in basso ---------- */
   .appnav,.tabs{--nav-bg:rgba(255,255,255,.55);--nav-solid:#f7f8fa;--nav-brd:rgba(255,255,255,.55);
     --nav-mut:#5d6b80;--nav-on:#a97f2e;--nav-on-bg:rgba(169,127,46,.16);--nav-press:rgba(20,30,50,.10)}
   body.dark .appnav {--nav-bg:rgba(28,38,58,.55);--nav-solid:#151f33;--nav-brd:rgba(255,255,255,.22);
     --nav-mut:#9db0d0;--nav-on:#d9b878;--nav-on-bg:rgba(198,163,90,.22);--nav-press:rgba(255,255,255,.14)}
   /* ---- barra app: vetro liquido stile iOS, identica in tutte le pagine ---- */
-  .appnav{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);
-    z-index:70;display:flex;align-items:center;gap:2px;padding:4px;
-    width:max-content;max-width:calc(100vw - 20px);border-radius:28px;
+  .appnav{position:fixed;left:10px;right:10px;bottom:18px;
+    z-index:70;display:flex;align-items:stretch;gap:2px;padding:5px;
+    border-radius:30px;
     background:var(--nav-bg);
     -webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);
     border:.5px solid var(--nav-brd);
     box-shadow:0 8px 32px rgba(0,0,0,.20), 0 1px 3px rgba(0,0,0,.10), inset 0 .5px 0 rgba(255,255,255,.45);
     transition:transform .3s cubic-bezier(.4,0,.2,1), opacity .22s ease}
-  .appnav.navoff{transform:translateX(-50%) translateY(calc(100% + 30px));opacity:0;pointer-events:none}
+  .appnav.navoff{transform:translateY(calc(100% + 30px));opacity:0;pointer-events:none}
   .appnav a,.appnav button,.appnav span.on{
     -webkit-appearance:none;appearance:none;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
-    padding:6px 12px;border-radius:22px;min-width:58px;text-decoration:none;
+    flex:1 1 0;min-width:0;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+    padding:9px 4px;border-radius:24px;text-decoration:none;
     font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;
-    font-size:9.5px;font-weight:600;letter-spacing:.01em;line-height:1.1;
+    font-size:10px;font-weight:600;letter-spacing:.01em;line-height:1.1;
     color:var(--nav-mut);background:transparent;border:0;cursor:pointer;
     -webkit-tap-highlight-color:transparent;
     transition:background .12s ease, transform .12s ease}
-  .appnav a:active,.appnav button:active{background:var(--nav-press);transform:scale(.92)}
-  .appnav .ai{font-size:19px;line-height:1}
+  .appnav a.press,.appnav button.press{background:var(--nav-press);transform:scale(.93)}
+  .appnav .ai{font-size:21px;line-height:1}
   .appnav .on{color:var(--nav-on);background:var(--nav-on-bg)}
   html[data-os="android"] .appnav{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--nav-solid)}
 </style>
@@ -1546,6 +1546,17 @@ init();
     n.classList.toggle("navoff",hidden());
   };
   window.setNavBar=function(on){try{localStorage.setItem(K,on?"on":"off");}catch(e){}window.applyNavBar();};
+  // feedback al tocco: su iOS i link non reagiscono a :active, serve il touch
+  (function(){
+    var sel="#appNav a, #appNav button, #tripTabs button";
+    function on(e){ var t=e.target.closest(sel); if(t)t.classList.add("press"); }
+    function off(){ document.querySelectorAll(".press").forEach(function(x){x.classList.remove("press");}); }
+    document.addEventListener("touchstart",on,{passive:true});
+    document.addEventListener("touchend",off,{passive:true});
+    document.addEventListener("touchcancel",off,{passive:true});
+    document.addEventListener("mousedown",on);
+    document.addEventListener("mouseup",off);
+  })();
   window.applyNavBar();   // gli elementi esistono gia: script in fondo al body
   document.addEventListener("DOMContentLoaded",window.applyNavBar);
 })();
