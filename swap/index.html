@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Swap Planner</title>
@@ -310,23 +310,34 @@
   html[data-os="ios"] body.dark .drawer{background:rgba(15,23,34,.66)}
 
   /* ---------- barra app in basso ---------- */
-  .appnav{--nav-bg:rgba(255,255,255,.72);--nav-solid:#ffffff;--nav-brd:rgba(20,30,50,.12);
-    --nav-mut:#5d6b80;--nav-on:#a97f2e;--nav-on-bg:rgba(169,127,46,.13)}
-  body.dark .appnav {--nav-bg:rgba(16,25,42,.72);--nav-solid:#111c30;--nav-brd:rgba(255,255,255,.12);
-    --nav-mut:#8ba0c6;--nav-on:#c6a35a;--nav-on-bg:rgba(198,163,90,.16)}
-  .appnav{position:fixed;left:0;right:0;bottom:0;z-index:70;
-    display:flex;align-items:stretch;
-    padding:6px 8px calc(6px + env(safe-area-inset-bottom));
-    background:var(--nav-bg);border-top:1px solid var(--nav-brd);
-    backdrop-filter:blur(22px) saturate(1.5);-webkit-backdrop-filter:blur(22px) saturate(1.5);
-    box-shadow:0 -6px 26px rgba(0,0,0,.22)}
+  .appnav,.tabs{--nav-bg:rgba(255,255,255,.68);--nav-solid:#ffffff;--nav-brd:rgba(20,30,50,.14);
+    --nav-mut:#5d6b80;--nav-on:#a97f2e;--nav-on-bg:rgba(169,127,46,.14)}
+  body.dark .appnav {--nav-bg:rgba(18,28,46,.62);--nav-solid:#111c30;--nav-brd:rgba(255,255,255,.16);
+    --nav-mut:#8ba0c6;--nav-on:#c6a35a;--nav-on-bg:rgba(198,163,90,.18)}
+  /* pillola flottante in vetro, stile iOS — identica in tutte le app */
+  .appnav{position:fixed;left:50%;bottom:calc(12px + env(safe-area-inset-bottom));transform:translateX(-50%);
+    z-index:70;display:flex;align-items:center;gap:2px;padding:6px;
+    width:max-content;max-width:calc(100vw - 20px);border-radius:26px;
+    background:var(--nav-bg);border:1px solid var(--nav-brd);
+    backdrop-filter:blur(24px) saturate(1.6);-webkit-backdrop-filter:blur(24px) saturate(1.6);
+    box-shadow:0 8px 30px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.16);
+    transition:transform .3s cubic-bezier(.4,0,.2,1), opacity .22s ease}
+  .appnav.navoff{transform:translateX(-50%) translateY(calc(100% + 26px));opacity:0;pointer-events:none}
   .appnav a,.appnav button,.appnav span.on{
-    flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
-    padding:8px 2px;border-radius:14px;text-decoration:none;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+    padding:8px 12px;border-radius:20px;min-width:58px;text-decoration:none;
     font-family:inherit;font-size:10px;font-weight:700;letter-spacing:.02em;
     color:var(--nav-mut);background:transparent;border:0;cursor:pointer}
-  .appnav .ai{font-size:20px;line-height:1}
+  .appnav a:active,.appnav button:active{transform:scale(.94)}
+  .appnav .ai{font-size:19px;line-height:1}
   .appnav .on{color:var(--nav-on);background:var(--nav-on-bg)}
+  .appnav .navhide{min-width:30px;padding:8px 4px;font-size:15px;opacity:.6;gap:0}
+  /* maniglia per far ricomparire la barra */
+  .navgrab{position:fixed;left:50%;bottom:calc(4px + env(safe-area-inset-bottom));transform:translateX(-50%);
+    z-index:69;width:64px;height:22px;display:none;align-items:center;justify-content:center;
+    border:0;background:transparent;padding:0;cursor:pointer}
+  .navgrab.on{display:flex}
+  .navgrab::before{content:"";width:42px;height:5px;border-radius:3px;background:var(--nav-mut);opacity:.55}
   html[data-os="android"] .appnav{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--nav-solid)}
 </style>
 </head>
@@ -1512,7 +1523,26 @@ init();
   <a href="/?go=events"><span class="ai">🎟️</span>Eventi</a>
   <span class="on"><span class="ai">🔄</span>Swap</span>
   <a href="/flightscan/"><span class="ai">✈️</span>Voli</a>
+  <button class="navhide" aria-label="Nascondi barra" onclick="setNavBar(false)">&#8964;</button>
 </nav>
+<button class="navgrab" id="navGrab" aria-label="Mostra barra" onclick="setNavBar(true)"></button>
 
+<script>
+(function(){
+  var K="triphub.navbar";   // stesso dominio: la scelta vale per tutte le app della suite
+  function hidden(){try{return localStorage.getItem(K)==="off";}catch(e){return false;}}
+  window.navBarHidden=hidden;
+  window.applyNavBar=function(){
+    var n=document.getElementById("appNav"),g=document.getElementById("navGrab");
+    if(!n)return;
+    var off=hidden(), shown=n.style.display!=="none";
+    n.classList.toggle("navoff",off);
+    if(g)g.classList.toggle("on",off&&shown);
+  };
+  window.setNavBar=function(on){try{localStorage.setItem(K,on?"on":"off");}catch(e){}window.applyNavBar();};
+  window.applyNavBar();   // gli elementi esistono gia: script in fondo al body
+  document.addEventListener("DOMContentLoaded",window.applyNavBar);
+})();
+</script>
 </body>
 </html>
