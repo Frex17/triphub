@@ -226,35 +226,33 @@
   html[data-os="android"] .panel, html[data-os="android"] .pass{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--surface);border-color:var(--line)}
 
   /* ---------- barra app in basso ---------- */
-  .appnav,.tabs{--nav-bg:rgba(255,255,255,.68);--nav-solid:#ffffff;--nav-brd:rgba(20,30,50,.14);
-    --nav-mut:#5d6b80;--nav-on:#a97f2e;--nav-on-bg:rgba(169,127,46,.14)}
-  [data-theme="dark"] .appnav {--nav-bg:rgba(18,28,46,.62);--nav-solid:#111c30;--nav-brd:rgba(255,255,255,.16);
-    --nav-mut:#8ba0c6;--nav-on:#c6a35a;--nav-on-bg:rgba(198,163,90,.18)}
-  /* pillola flottante in vetro, stile iOS — identica in tutte le app */
-  .appnav{position:fixed;left:50%;bottom:calc(12px + env(safe-area-inset-bottom));transform:translateX(-50%);
-    z-index:70;display:flex;align-items:center;gap:2px;padding:6px;
-    width:max-content;max-width:calc(100vw - 20px);border-radius:26px;
-    background:var(--nav-bg);border:1px solid var(--nav-brd);
-    backdrop-filter:blur(24px) saturate(1.6);-webkit-backdrop-filter:blur(24px) saturate(1.6);
-    box-shadow:0 8px 30px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.16);
+  .appnav,.tabs{--nav-bg:rgba(255,255,255,.55);--nav-solid:#f7f8fa;--nav-brd:rgba(255,255,255,.55);
+    --nav-mut:#5d6b80;--nav-on:#a97f2e;--nav-on-bg:rgba(169,127,46,.16);--nav-press:rgba(20,30,50,.10)}
+  [data-theme="dark"] .appnav {--nav-bg:rgba(28,38,58,.55);--nav-solid:#151f33;--nav-brd:rgba(255,255,255,.22);
+    --nav-mut:#9db0d0;--nav-on:#d9b878;--nav-on-bg:rgba(198,163,90,.22);--nav-press:rgba(255,255,255,.14)}
+  /* ---- barra app: vetro liquido stile iOS, identica in tutte le pagine ---- */
+  .appnav{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);
+    z-index:70;display:flex;align-items:center;gap:2px;padding:4px;
+    width:max-content;max-width:calc(100vw - 20px);border-radius:28px;
+    background:var(--nav-bg);
+    -webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);
+    border:.5px solid var(--nav-brd);
+    box-shadow:0 8px 32px rgba(0,0,0,.20), 0 1px 3px rgba(0,0,0,.10), inset 0 .5px 0 rgba(255,255,255,.45);
     transition:transform .3s cubic-bezier(.4,0,.2,1), opacity .22s ease}
-  .appnav.navoff{transform:translateX(-50%) translateY(calc(100% + 26px));opacity:0;pointer-events:none}
+  .appnav.navoff{transform:translateX(-50%) translateY(calc(100% + 30px));opacity:0;pointer-events:none}
   .appnav a,.appnav button,.appnav span.on{
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
-    padding:8px 12px;border-radius:20px;min-width:58px;text-decoration:none;
-    font-family:inherit;font-size:10px;font-weight:700;letter-spacing:.02em;
-    color:var(--nav-mut);background:transparent;border:0;cursor:pointer}
-  .appnav a:active,.appnav button:active{transform:scale(.94)}
+    -webkit-appearance:none;appearance:none;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+    padding:6px 12px;border-radius:22px;min-width:58px;text-decoration:none;
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;
+    font-size:9.5px;font-weight:600;letter-spacing:.01em;line-height:1.1;
+    color:var(--nav-mut);background:transparent;border:0;cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+    transition:background .12s ease, transform .12s ease}
+  .appnav a:active,.appnav button:active{background:var(--nav-press);transform:scale(.92)}
   .appnav .ai{font-size:19px;line-height:1}
   .appnav .on{color:var(--nav-on);background:var(--nav-on-bg)}
-  .appnav .navhide{min-width:30px;padding:8px 4px;font-size:15px;opacity:.6;gap:0}
-  /* maniglia per far ricomparire la barra */
-  .navgrab{position:fixed;left:50%;bottom:calc(4px + env(safe-area-inset-bottom));transform:translateX(-50%);
-    z-index:69;width:64px;height:22px;display:none;align-items:center;justify-content:center;
-    border:0;background:transparent;padding:0;cursor:pointer}
-  .navgrab.on{display:flex}
-  .navgrab::before{content:"";width:42px;height:5px;border-radius:3px;background:var(--nav-mut);opacity:.55}
-  html[data-os="android"] .appnav{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--nav-solid)}
+  html[data-os="android"] .appnav{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--nav-solid)}
 </style>
 </head>
 <body>
@@ -263,6 +261,25 @@
 <div class="modal" id="impModal" aria-hidden="true">
   <div class="mhead"><div class="mtitle">Gruppi da Swap Planner</div><button class="mclose" onclick="closeImport()" aria-label="Chiudi">&#10005;</button></div>
   <div id="impBody"></div>
+</div>
+
+
+<div class="overlay" id="setov" onclick="closeSettings()"></div>
+<div class="modal" id="setModal" aria-hidden="true">
+  <div class="mhead"><div class="mtitle">Impostazioni</div><button class="mclose" onclick="closeSettings()" aria-label="Chiudi">&#10005;</button></div>
+  <div class="field"><label>Tema</label>
+    <div class="triptype" id="thSeg">
+      <button type="button" data-t="light">☀︎ Chiaro</button>
+      <button type="button" data-t="dark">☾ Scuro</button>
+      <button type="button" data-t="auto">📱 Auto</button>
+    </div>
+  </div>
+  <div class="field"><label>Barra di navigazione</label>
+    <div class="triptype" id="navSeg">
+      <button type="button" data-n="1">Mostra</button>
+      <button type="button" data-n="0">Nascondi</button>
+    </div>
+  </div>
 </div>
 
 <div class="overlay" id="tdov" onclick="closeTrips()"></div>
@@ -278,7 +295,7 @@
 <div class="wrap">
   <header>
     <div class="brand">Flight<b>Scan</b></div>
-    <button class="burger" id="themeBtn" onclick="toggleTheme()" aria-label="Tema">&#128241;</button>
+    <button class="burger" onclick="openSettings()" aria-label="Impostazioni">&#9881;</button>
     <button class="burger" onclick="openTrips()" aria-label="Viaggi salvati">&#9776;</button>
   </header>
 
@@ -393,10 +410,23 @@ function applyThemeFS(){
   var t=p==="auto"?(_fsSysDark()?"dark":"light"):p;
   document.documentElement.setAttribute("data-theme",t);
   var mc=document.querySelector('meta[name="theme-color"]'); if(mc) mc.setAttribute("content",t==="dark"?"#0c1526":"#e6ebf3");
-  var b=el("themeBtn"); if(b) b.innerHTML=(p==="auto")?"\uD83D\uDCF1":(t==="dark"?"\u2600":"\u263E");
 }
-function setTheme(t){ try{localStorage.setItem("fs.theme",t);}catch(e){} applyThemeFS(); }
-function toggleTheme(){ var order=["auto","light","dark"]; var i=order.indexOf(_fsPref()); setTheme(order[(i+1)%3]); }
+function setTheme(t){ try{localStorage.setItem("fs.theme",t);}catch(e){} applyThemeFS();
+
+function openSettings(){
+  el("setModal").classList.add("open"); el("setov").classList.add("open");
+  var p=_fsPref();
+  document.querySelectorAll("#thSeg button").forEach(function(b){ b.classList.toggle("on", b.dataset.t===p); });
+  syncNavSeg();
+}
+function closeSettings(){ el("setModal").classList.remove("open"); el("setov").classList.remove("open"); }
+function syncNavSeg(){
+  var off=window.navBarHidden&&window.navBarHidden();
+  document.querySelectorAll("#navSeg button").forEach(function(b){ b.classList.toggle("on",(b.dataset.n==="0")===!!off); });
+}
+document.querySelectorAll("#thSeg button").forEach(function(b){ b.onclick=function(){ setTheme(b.dataset.t); document.querySelectorAll("#thSeg button").forEach(function(x){x.classList.toggle("on",x===b);}); }; });
+document.querySelectorAll("#navSeg button").forEach(function(b){ b.onclick=function(){ window.setNavBar(b.dataset.n==="1"); syncNavSeg(); }; });
+ }
 if(window.matchMedia){try{window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change",function(){if(_fsPref()==="auto")applyThemeFS();});}catch(e){}}
 
 // ---- aeroporti ----
@@ -733,14 +763,12 @@ function applyPendingImport(){
 (async function(){ await loadAirports(); openSearch(); applyPendingImport(); })();
 </script>
 <nav class="appnav" id="appNav">
-  <a href="/"><span class="ai">&#8962;</span>Home</a>
+  <a href="/"><span class="ai">🏠</span>Home</a>
   <a href="/?go=planner"><span class="ai">🧳</span>Viaggi</a>
   <a href="/?go=events"><span class="ai">🎟️</span>Eventi</a>
   <a href="/swap/"><span class="ai">🔄</span>Swap</a>
   <span class="on"><span class="ai">✈️</span>Voli</span>
-  <button class="navhide" aria-label="Nascondi barra" onclick="setNavBar(false)">&#8964;</button>
 </nav>
-<button class="navgrab" id="navGrab" aria-label="Mostra barra" onclick="setNavBar(true)"></button>
 
 <script>
 (function(){
@@ -748,11 +776,9 @@ function applyPendingImport(){
   function hidden(){try{return localStorage.getItem(K)==="off";}catch(e){return false;}}
   window.navBarHidden=hidden;
   window.applyNavBar=function(){
-    var n=document.getElementById("appNav"),g=document.getElementById("navGrab");
+    var n=document.getElementById("appNav");
     if(!n)return;
-    var off=hidden(), shown=n.style.display!=="none";
-    n.classList.toggle("navoff",off);
-    if(g)g.classList.toggle("on",off&&shown);
+    n.classList.toggle("navoff",hidden());
   };
   window.setNavBar=function(on){try{localStorage.setItem(K,on?"on":"off");}catch(e){}window.applyNavBar();};
   window.applyNavBar();   // gli elementi esistono gia: script in fondo al body
