@@ -551,9 +551,7 @@ function toUTC(d){const a=d.split("-").map(Number);return Date.UTC(a[0],a[1]-1,a
 function daysBetween(a,b){return Math.round((toUTC(b)-toUTC(a))/864e5);}
 function addDays(d,n){const t=new Date(toUTC(d)+n*864e5);const p=x=>String(x).padStart(2,"0");return t.getUTCFullYear()+"-"+p(t.getUTCMonth()+1)+"-"+p(t.getUTCDate());}
 const MM=["GEN","FEB","MAR","APR","MAG","GIU","LUG","AGO","SET","OTT","NOV","DIC"];
-const WD=["DOM","LUN","MAR","MER","GIO","VEN","SAB"];
 function pretty(d){if(!d)return"";const a=d.split("-").map(Number);return String(a[2]).padStart(2,"0")+" "+MM[a[1]-1];}
-function weekday(d){return WD[new Date(toUTC(d)).getUTCDay()];}
 function todayStr(){const t=new Date(),p=x=>String(x).padStart(2,"0");return t.getFullYear()+"-"+p(t.getMonth()+1)+"-"+p(t.getDate());}
 function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
 function eur(n){return(Math.round(n*100)/100).toLocaleString("it-IT",{minimumFractionDigits:0,maximumFractionDigits:2})+" €";}
@@ -1071,33 +1069,31 @@ function renderBooking(t){
     h+='<div class="recap-tot" style="margin-top:10px;padding-top:10px"><b>Totale</b><b>'+eur(num(b.total))+'</b></div>';
     h+='<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-top:2px"><span>A testa ('+nP+')</span><b>'+eur(num(b.total)/nP)+'</b></div>';
   }
+  if(b.room)h+='<div style="font-size:12.5px;color:var(--muted);margin-top:4px">🛏 '+esc(b.room)+(b.pax?(" · "+esc(b.pax)+" persone"):"")+'</div>';
+  if(b.phone)h+='<div style="font-size:12.5px;margin-top:4px">📞 <a href="tel:'+esc(String(b.phone).replace(/[^\d+]/g,""))+'" style="color:var(--brass)">'+esc(b.phone)+'</a></div>';
   if(b.who)h+='<div style="font-size:12.5px;color:var(--muted);margin-top:6px">Prenotato da '+esc(b.who)+'</div>';
   h+='</div>';
   if(b.url)h+='<div class="provs" style="margin-top:10px"><a class="prov hi wide" href="'+esc(b.url)+'" target="_blank" rel="noopener"><span class="pv-ic">'+p.i+'</span><span class="pv-tx">Apri la prenotazione<small>'+esc(p.n)+'</small></span></a></div>';
   box.innerHTML=h;
 }
-/* legge i dati da testo incollato o da screenshot (OCR) */
-// parser prenotazioni: tollerante a formati IT/EN e ai testi da OCR
+/* legge i dati da testo incollato o da uno o piu screenshot (OCR) */
 function pbDate(str){
   if(!str)return "";
   var s=String(str).trim();
-  var m=s.match(/^(20\d{2})-(\d{1,2})-(\d{1,2})$/);
+  var m=s.match(/(20\d{2})-(\d{1,2})-(\d{1,2})/);
   if(m)return m[1]+"-"+("0"+m[2]).slice(-2)+"-"+("0"+m[3]).slice(-2);
-  m=s.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](20\d{2})$/);
+  m=s.match(/(\d{1,2})[\/.\-](\d{1,2})[\/.\-](20\d{2})/);
   if(m)return m[3]+"-"+("0"+m[2]).slice(-2)+"-"+("0"+m[1]).slice(-2);
   var MESI={gen:1,feb:2,mar:3,apr:4,mag:5,giu:6,lug:7,ago:8,set:9,ott:10,nov:11,dic:12,
-            jan:1,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,dec:12};
+            jan:1,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,dec:12,
+            gennaio:1,febbraio:2,marzo:3,aprile:4,maggio:5,giugno:6,luglio:7,agosto:8,settembre:9,ottobre:10,novembre:11,dicembre:12};
   m=s.match(/(\d{1,2})\s+([a-zà-ù]{3,})\.?\s+(20\d{2})/i);
-  if(m){var k=m[2].slice(0,3).toLowerCase(); if(MESI[k])return m[3]+"-"+("0"+MESI[k]).slice(-2)+"-"+("0"+m[1]).slice(-2);}
+  if(m){var k=m[2].toLowerCase(); k=MESI[k]||MESI[k.slice(0,3)];
+        if(k)return m[3]+"-"+("0"+k).slice(-2)+"-"+("0"+m[1]).slice(-2);}
   m=s.match(/([a-zà-ù]{3,})\.?\s+(\d{1,2}),?\s+(20\d{2})/i);
-  if(m){var k2=m[1].slice(0,3).toLowerCase(); if(MESI[k2])return m[3]+"-"+("0"+MESI[k2]).slice(-2)+"-"+("0"+m[2]).slice(-2);}
+  if(m){var k2=m[1].toLowerCase(); k2=MESI[k2]||MESI[k2.slice(0,3)];
+        if(k2)return m[3]+"-"+("0"+k2).slice(-2)+"-"+("0"+m[2]).slice(-2);}
   return "";
-}
-function pbAllDates(T){
-  var re=/(20\d{2}-\d{1,2}-\d{1,2}|\d{1,2}[\/.\-]\d{1,2}[\/.\-]20\d{2}|\d{1,2}\s+[a-zà-ù]{3,}\.?\s+20\d{2}|[a-zà-ù]{3,}\.?\s+\d{1,2},?\s+20\d{2})/gi;
-  var out=[],m;
-  while((m=re.exec(T))!==null){var d=pbDate(m[1]); if(d)out.push(d);}
-  return out;
 }
 function pbNum(s){
   if(!s)return "";
@@ -1107,78 +1103,124 @@ function pbNum(s){
   var v=parseFloat(s);
   return isFinite(v)?String(v):"";
 }
+/* trova il valore di un'etichetta: sulla stessa riga oppure nelle righe successive */
+function pbLabel(lines,re,opt){
+  opt=opt||{};
+  for(var i=0;i<lines.length;i++){
+    var m=lines[i].match(re);
+    if(!m)continue;
+    var rest=lines[i].slice(m.index+m[0].length).replace(/^[\s:.\-–]+/,"").trim();
+    if(rest&&(!opt.test||opt.test(rest)))return{v:rest,i:i};
+    var acc=[];
+    for(var j=i+1;j<lines.length&&j<=i+(opt.span||1);j++){
+      var l=lines[j].trim();
+      if(!l)break;
+      if(opt.stop&&opt.stop.test(l))break;
+      acc.push(l);
+      if(!opt.span&&(!opt.test||opt.test(l)))return{v:l,i:j};
+    }
+    if(acc.length&&!opt.test)return{v:acc.join(" "),i:i+1};   // il ripiego vale solo senza controllo
+  }
+  return null;
+}
 function parseBooking(txt){
   var out={},T=String(txt||"").replace(/\u00a0/g," ");
-  var lines=T.split(/\n/).map(function(x){return x.trim();}).filter(Boolean);
+  var lines=T.split(/\n/).map(function(x){return x.replace(/\s+/g," ").trim();});
+  var nz=lines.filter(Boolean);
+  var hasDate=/(20\d{2}-\d{1,2}-\d{1,2}|\d{1,2}[\/.\-]\d{1,2}[\/.\-]20\d{2}|\d{1,2}\s+[a-zà-ù]{3,}\.?\s+20\d{2}|[a-zà-ù]{3,}\.?\s+\d{1,2},?\s+20\d{2})/i;
 
   var url=T.match(/https?:\/\/[^\s<>"']+/);
   if(url)out.url=url[0];
 
-  // check-in / check-out per etichetta, altrimenti prime due date trovate
-  var ci=T.match(/(?:check[\s\-]?in|arrivo|arrival)[^\d]{0,25}([^\n]{6,30})/i);
-  var co=T.match(/(?:check[\s\-]?out|partenza|departure)[^\d]{0,25}([^\n]{6,30})/i);
-  if(ci)out.checkin=pbDate((ci[1].match(/(20\d{2}-\d{1,2}-\d{1,2}|\d{1,2}[\/.\-]\d{1,2}[\/.\-]20\d{2}|\d{1,2}\s+[a-zà-ù]{3,}\.?\s+20\d{2}|[a-zà-ù]{3,}\.?\s+\d{1,2},?\s+20\d{2})/i)||[])[1]);
-  if(co)out.checkout=pbDate((co[1].match(/(20\d{2}-\d{1,2}-\d{1,2}|\d{1,2}[\/.\-]\d{1,2}[\/.\-]20\d{2}|\d{1,2}\s+[a-zà-ù]{3,}\.?\s+20\d{2}|[a-zà-ù]{3,}\.?\s+\d{1,2},?\s+20\d{2})/i)||[])[1]);
+  /* --- date --- */
+  var ci=pbLabel(nz,/\b(?:check[\s\-]?in|arrivo|arrival)\b/i,{test:function(v){return hasDate.test(v);}});
+  var co=pbLabel(nz,/\b(?:check[\s\-]?out|partenza|departure)\b/i,{test:function(v){return hasDate.test(v);}});
+  if(ci)out.checkin=pbDate(ci.v);
+  if(co)out.checkout=pbDate(co.v);
   if(!out.checkin||!out.checkout){
-    var ds=pbAllDates(T);
-    if(!out.checkin&&ds[0])out.checkin=ds[0];
-    if(!out.checkout&&ds[1])out.checkout=ds[1];
+    var all=[],re=new RegExp(hasDate.source,"gi"),mm;
+    while((mm=re.exec(T))!==null){var d=pbDate(mm[1]); if(d&&all.indexOf(d)<0)all.push(d);}
+    all.sort();
+    if(!out.checkin&&all[0])out.checkin=all[0];
+    if(!out.checkout&&all[1])out.checkout=all[1];
   }
 
-  // importo: prendi solo cifre legate alla valuta, quella dopo "totale" se c'è
-  var amts=[],ra=/(?:€|EUR)\s*(\d[\d.,]*)|(\d[\d.,]*)\s*(?:€|EUR)/gi,ma;
-  while((ma=ra.exec(T))!==null){ amts.push({i:ma.index,v:pbNum(ma[1]||ma[2])}); }
-  amts=amts.filter(function(a){return a.v!=="";});
-  if(amts.length){
-    var lab=T.search(/totale|total|importo|amount|prezzo|price/i);
-    var pick=null;
-    if(lab>=0)pick=amts.find(function(a){return a.i>=lab;});
-    if(!pick)pick=amts.reduce(function(x,y){return parseFloat(y.v)>parseFloat(x.v)?y:x;});
-    out.total=pick.v;
+  /* --- importo: prima le etichette precise, poi ripiego --- */
+  var money=/(?:€|EUR)\s*(\d[\d.,]*)|(\d[\d.,]*)\s*(?:€|EUR)/i;
+  var LAB=[/importo totale/i,/costo totale/i,/prezzo totale/i,/total amount/i,/total price/i,/totale\b(?!\s*(?:pagato|paid))/i,/\btotal\b(?!\s*paid)/i];
+  for(var a=0;a<LAB.length&&!out.total;a++){
+    var hit=pbLabel(nz,LAB[a],{test:function(v){return money.test(v);}});
+    if(hit){var mv=hit.v.match(money); if(mv)out.total=pbNum(mv[1]||mv[2]);}
   }
-  // riferimento prenotazione
-  var ref=T.match(/(?:numero di prenotazione|booking number|confirmation code|codice di conferma|order no\.?|ordine|rif\.?|ref\.?)\s*[:#]?\s*([A-Z0-9][A-Z0-9\-]{4,})/i);
-  if(ref)out.ref=ref[1];
-  if(!out.ref&&out.url){
-    var q=out.url.match(/(?:bn|id|code)=([A-Z0-9\-]{5,})/i);
-    if(q)out.ref=q[1];
+  if(!out.total){
+    var amts=[],ra=/(?:€|EUR)\s*(\d[\d.,]*)|(\d[\d.,]*)\s*(?:€|EUR)/gi,ma;
+    while((ma=ra.exec(T))!==null){var v=pbNum(ma[1]||ma[2]); if(v!=="")amts.push(parseFloat(v));}
+    if(amts.length)out.total=String(Math.max.apply(null,amts));
   }
 
-  // nome struttura: prima riga "pulita" che non sia un'intestazione
-  var skip=/^(gentile|caro|ciao|dear|hello|hi\b|conferma|confermat|confirm|your |la tua|grazie|thank|prenotazione confermata|booking confirmed)/i;
-  var isData=function(l){
-    return /^https?:/i.test(l) || /[€]|EUR/i.test(l) ||
-           /check[\s\-]?in|check[\s\-]?out|arrivo|partenza|arrival|departure/i.test(l) ||
-           /prenotazione|booking|confirmation|order|rif\.|ref\.|pin/i.test(l) ||
-           pbAllDates(l).length>0;
-  };
-  var name=lines.find(function(l){return l.length>2&&l.length<70&&!skip.test(l)&&!isData(l);});
-  if(name)out.name=name;
+  /* --- riferimento --- */
+  var ref=pbLabel(nz,/(?:numero di prenotazione|codice di prenotazione|booking number|confirmation code|codice di conferma|order no\.?|numero d'ordine|rif\.?|ref\.?)/i,
+                  {test:function(v){return /[A-Z0-9]{5,}/i.test(v);}});
+  if(ref){var rm=ref.v.match(/([A-Z0-9][A-Z0-9\-]{4,})/i); if(rm)out.ref=rm[1];}
+  if(!out.ref&&out.url){var q=out.url.match(/(?:bn|id|code)=([A-Z0-9\-]{5,})/i); if(q)out.ref=q[1];}
 
-  // indirizzo: riga con parola tipica di via o con CAP/numero civico
-  var addr=lines.find(function(l){
-    return l!==name && !isData(l) &&
-      (/(^|\s)(via|viale|piazza|corso|calle|carrer|rua|street|st\.|avenue|ave\.|road|rd\.|strasse|straße)\s/i.test(l) ||
-       /\d{4,5}\s+[A-Za-zÀ-ù]/.test(l) || /,\s*\d+/.test(l));
-  });
-  if(addr)out.addr=addr;
+  /* --- indirizzo (puo occupare due righe) --- */
+  var stopLab=/^(telefono|phone|contatti|contact|condizioni|cancell|check|arrivo|partenza|prezzo|importo|costo|camera|room)/i;
+  var ad=pbLabel(nz,/^(?:posizione|indirizzo|address|location)\b/i,{span:2,stop:stopLab});
+  if(ad)out.addr=ad.v.replace(/\s*,\s*$/,"");
+  if(!out.addr){
+    var g=nz.find(function(l){return /(^|\s)(via|viale|piazza|corso|calle|carrer|street|st\.|avenue|road|strasse)\s/i.test(l)||/\b\d{4,5}\s+[A-Za-zÀ-ù]/.test(l);});
+    if(g)out.addr=g;
+  }
+
+  /* --- ospite, telefono, camera, persone --- */
+  var who=pbLabel(nz,/(?:nome dell'ospite|guest name|intestat)/i,{test:function(v){return /[A-Za-zÀ-ù]{3,}/.test(v)&&!/^nome/i.test(v);}});
+  if(who)out.who=who.v;
+  var tel=pbLabel(nz,/^(?:telefono|phone|tel\.?)\b/i,{test:function(v){return /[\d][\d\s\-+()]{5,}/.test(v);}});
+  if(tel){var tm=tel.v.match(/\+?[\d][\d\s\-().]{5,}/); if(tm)out.phone=tm[0].trim();}
+  var roomWord=/(camer|room|suite|appartament|apartment|loft|studio|notte|nights?|letto|bed|dorm|bungalow|chalet)/i;
+  var room=pbLabel(nz,/^(?:la tua prenotazione|your booking|your reservation|sistemazione|accommodation)\b/i,
+    {test:function(v){return roomWord.test(v);}});
+  if(room)out.room=room.v;
+  var paxLine=-1;
+  for(var pi=0;pi<nz.length;pi++){
+    var pm=nz[pi].match(/(\d+)\s*(?:adulti|adults|ospiti|guests|persone)/i);
+    if(pm){out.pax=pm[1];paxLine=pi;break;}
+  }
+
+  /* --- nome struttura: solo se contiene una parola inequivocabile.
+         Meglio lasciarlo vuoto che indovinare male: lo completa l'utente. --- */
+  var lodge=/(hotel|hostel|ostello|b&b|bed\s*&\s*breakfast|apartment|appartament|aparthotel|loft|residence|resort|inn\b|suites?|guest\s?house|pensione|albergo|camping|villa|casa\b|palace|lodge)/i;
+  for(var n=0;n<nz.length;n++){
+    var l=nz[n];
+    if(l.length<4||l.length>60)continue;
+    if(!lodge.test(l))continue;
+    if(/https?:|[€]|EUR/i.test(l))continue;
+    if(hasDate.test(l))continue;
+    if(l.split(" ").length>7)continue;
+    if(out.addr&&l===out.addr)continue;
+    if(/^(posizione|indirizzo|address|invia|contatt)/i.test(l))continue;
+    out.name=l;break;
+  }
+  if(out.room&&out.name&&out.room===out.name)delete out.room;
   return out;
 }
+
 function bookingPasteForm(t){
   openModal('<h3>Aggiungi prenotazione</h3>'
     +'<p class="hint" style="margin-top:6px;text-transform:none;letter-spacing:0">Scegli il modo piu comodo: leggo i dati e poi ti faccio correggere quello che serve.</p>'
     +'<div class="provs" style="margin-top:12px">'
-    +'<button class="prov hi wide" id="bkShot"><span class="pv-ic">📷</span><span class="pv-tx">Screenshot della prenotazione<small>scatto o foto dalla galleria</small></span></button>'
+    +'<button class="prov hi wide" id="bkShot"><span class="pv-ic">📷</span><span class="pv-tx">Screenshot della prenotazione<small>puoi sceglierne piu di uno</small></span></button>'
     +'<button class="prov wide" id="bkTxt"><span class="pv-ic">📋</span><span class="pv-tx">Testo o link<small>incolla la mail di conferma</small></span></button>'
     +'</div>'
-    +'<input type="file" id="bkFile" accept="image/*" style="display:none">'
+    +'<input type="file" id="bkFile" accept="image/*" multiple style="display:none">'
     +'<div id="bkProg" class="hint" style="margin-top:12px;display:none"></div>'
     +'<div class="mrow"><button class="btn ghost" id="bkPCancel">Annulla</button></div>');
   mBody.querySelector("#bkPCancel").onclick=closeModal;
   mBody.querySelector("#bkTxt").onclick=()=>bookingTextForm(t);
   const file=mBody.querySelector("#bkFile");
   mBody.querySelector("#bkShot").onclick=()=>file.click();
-  file.onchange=()=>{ if(file.files&&file.files[0])bookingFromImage(t,file.files[0]); };
+  file.onchange=()=>{ if(file.files&&file.files.length)bookingFromImages(t,file.files); };
 }
 function bookingTextForm(t){
   openModal('<h3>Incolla la conferma</h3>'
@@ -1192,209 +1234,95 @@ function bookingTextForm(t){
   };
 }
 /* OCR dello screenshot: legge il testo dall'immagine e poi usa lo stesso parser */
-function bookingFromImage(t,file){
+/* OCR: legge UNO O PIU screenshot e unisce i testi prima di interpretarli */
+function bookingFromImages(t,files,base){
   const prog=document.getElementById("bkProg");
-  const show=m=>{ if(prog){prog.style.display="";prog.textContent=m;} };
-  show("Carico il lettore di testo…");
+  const show=m=>{ if(prog){prog.style.display="";prog.innerHTML=m;} };
+  const list=Array.prototype.slice.call(files||[]);
+  if(!list.length)return;
   const run=()=>{
-    show("Leggo lo screenshot… (puo richiedere qualche secondo)");
-    window.Tesseract.recognize(file,"ita+eng",{logger:m=>{
-      if(m.status==="recognizing text")show("Leggo lo screenshot… "+Math.round((m.progress||0)*100)+"%");
-    }}).then(res=>{
-      const txt=(res&&res.data&&res.data.text)||"";
-      if(!txt.trim()){show("Non sono riuscito a leggere il testo. Prova col testo incollato.");return;}
-      bookingForm(t,Object.assign({},bookingOf(t)||{},parseBooking(txt)));
-    }).catch(err=>{
-      show("Lettura non riuscita: "+String((err&&err.message)||err)+". Puoi usare il testo o inserire a mano.");
-    });
+    let txt="",done=0;
+    const next=()=>{
+      if(done>=list.length){
+        if(!txt.trim()){show("Non sono riuscito a leggere il testo. Prova con un'immagine piu nitida o incolla il testo.");return;}
+        const found=parseBooking(txt);
+        const start=base||bookingOf(t)||{};
+        const merged=Object.assign({},start);
+        Object.keys(found).forEach(k=>{ if(!merged[k])merged[k]=found[k]; });  // riempie solo i vuoti
+        bookingForm(t,merged,txt);
+        return;
+      }
+      show("Leggo lo screenshot "+(done+1)+" di "+list.length+"…");
+      window.Tesseract.recognize(list[done],"ita+eng",{logger:m=>{
+        if(m.status==="recognizing text")show("Leggo lo screenshot "+(done+1)+" di "+list.length+"… "+Math.round((m.progress||0)*100)+"%");
+      }}).then(res=>{
+        txt+="\n"+(((res||{}).data||{}).text||"");
+        done++;next();
+      }).catch(err=>{
+        show("Lettura non riuscita: "+esc(String((err&&err.message)||err)));
+      });
+    };
+    next();
   };
   if(window.Tesseract){run();return;}
+  show("Preparo il lettore di testo…");
   const sc=document.createElement("script");
   sc.src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
   sc.onload=run;
   sc.onerror=()=>show("Non riesco a caricare il lettore (serve internet). Usa il testo o inserisci a mano.");
   document.head.appendChild(sc);
 }
-function bookingForm(t,pre){
+function bookingForm(t,pre,rawTxt){
   const b=pre||bookingOf(t)||{};
   const has=!!bookingOf(t);
-  openModal('<h3>Prenotazione</h3>'
+  const miss=[];
+  if(!b.name)miss.push("struttura");
+  if(!b.total)miss.push("importo");
+  if(!b.url)miss.push("link");
+  const note=rawTxt?('<p class="hint" style="margin-top:6px;text-transform:none;letter-spacing:0">'
+      +(miss.length?("Ho letto quello che ho trovato. Manca ancora: <b>"+miss.join(", ")+"</b> — aggiungilo qui sotto, oppure allega un altro screenshot.")
+                   :"Ho letto tutti i dati principali: controlla e salva.")+'</p>'):"";
+  openModal('<h3>Prenotazione</h3>'+note
     +'<label>Struttura</label><input id="bkName" value="'+esc(b.name||"")+'" placeholder="Es. Hostel Gran Via">'
-    +'<label>Indirizzo</label><input id="bkAddr" value="'+esc(b.addr||"")+'" placeholder="Via, città">'
+    +'<label>Indirizzo</label><input id="bkAddr" value="'+esc(b.addr||"")+'" placeholder="Via, citta">'
     +'<div class="grid2"><div><label>Check-in</label><input type="date" id="bkIn" value="'+esc(b.checkin||t.start||"")+'"></div>'
     +'<div><label>Check-out</label><input type="date" id="bkOut" value="'+esc(b.checkout||t.end||"")+'"></div></div>'
     +'<div class="grid2"><div><label>Totale (€)</label><input type="number" id="bkTot" inputmode="decimal" value="'+esc(b.total||"")+'"></div>'
     +'<div><label>N. prenotazione</label><input id="bkRef" value="'+esc(b.ref||"")+'"></div></div>'
+    +'<label>Camera / sistemazione</label><input id="bkRoom" value="'+esc(b.room||"")+'" placeholder="Es. 1 notte, camera quadrupla">'
     +'<label>Link alla prenotazione</label><input id="bkUrl" value="'+esc(b.url||"")+'" placeholder="https://...">'
-    +'<label>Prenotato da</label><input id="bkWho" value="'+esc(b.who||"")+'" placeholder="Chi ha prenotato">'
+    +'<div class="grid2"><div><label>Prenotato da</label><input id="bkWho" value="'+esc(b.who||"")+'"></div>'
+    +'<div><label>Telefono struttura</label><input id="bkTel" value="'+esc(b.phone||"")+'"></div></div>'
+    +'<div class="provs" style="margin-top:14px"><button class="prov wide" id="bkMore"><span class="pv-ic">📷</span><span class="pv-tx">Allega un altro screenshot<small>completa i dati mancanti</small></span></button></div>'
+    +'<input type="file" id="bkFile2" accept="image/*" multiple style="display:none">'
+    +'<div id="bkProg" class="hint" style="margin-top:10px;display:none"></div>'
     +'<div class="mrow">'+(has?'<button class="btn danger" id="bkDel">Elimina</button>':'')
     +'<button class="btn ghost" id="bkCancel">Annulla</button><button class="btn primary" id="bkSave">Salva</button></div>');
+  const grab=()=>({
+    name:mBody.querySelector("#bkName").value.trim(),
+    addr:mBody.querySelector("#bkAddr").value.trim(),
+    checkin:mBody.querySelector("#bkIn").value,
+    checkout:mBody.querySelector("#bkOut").value,
+    total:mBody.querySelector("#bkTot").value,
+    ref:mBody.querySelector("#bkRef").value.trim(),
+    room:mBody.querySelector("#bkRoom").value.trim(),
+    url:mBody.querySelector("#bkUrl").value.trim(),
+    who:mBody.querySelector("#bkWho").value.trim(),
+    phone:mBody.querySelector("#bkTel").value.trim(),
+    pax:b.pax||""
+  });
   mBody.querySelector("#bkCancel").onclick=closeModal;
   const del=mBody.querySelector("#bkDel");
   if(del)del.onclick=()=>{if(!confirm("Eliminare la prenotazione?"))return;t.lodging.booking=null;touch(t);closeModal();renderTrip();};
+  const f2=mBody.querySelector("#bkFile2");
+  mBody.querySelector("#bkMore").onclick=()=>f2.click();
+  // i nuovi dati non cancellano quelli gia' scritti: riempiono solo i vuoti
+  f2.onchange=()=>{ if(f2.files&&f2.files.length)bookingFromImages(t,f2.files,grab()); };
   mBody.querySelector("#bkSave").onclick=()=>{
     if(!t.lodging)t.lodging={};
-    t.lodging.booking={
-      name:mBody.querySelector("#bkName").value.trim(),
-      addr:mBody.querySelector("#bkAddr").value.trim(),
-      checkin:mBody.querySelector("#bkIn").value,
-      checkout:mBody.querySelector("#bkOut").value,
-      total:mBody.querySelector("#bkTot").value,
-      ref:mBody.querySelector("#bkRef").value.trim(),
-      url:mBody.querySelector("#bkUrl").value.trim(),
-      who:mBody.querySelector("#bkWho").value.trim()
-    };
+    t.lodging.booking=grab();
     touch(t);closeModal();renderTrip();
   };
-}
-
-function renderLodCalc(t){
-  const lod=t.lodging||{},calc=document.getElementById("lodCalc"),links=document.getElementById("lodLinks");
-  links.className="provs";
-  const zone=(lod.zone||"").trim();
-  const q=encodeURIComponent(((zone?zone+" ":"")+(t.loc||"")).trim());
-  if(lod.mode==="night"){
-    calc.innerHTML="";
-    links.innerHTML='<a class="prov hi wide" href="/flightscan/"><span class="pv-ic">✈️</span><span class="pv-tx">FlightScan<small>primo volo del mattino</small></span></a>';
-    return;
-  }
-  const nP=Math.max(1,(t.parts||[]).length);
-  const nights=num(lod.nights)>0?num(lod.nights):Math.max(1,(t.start&&t.end)?daysBetween(t.start,t.end):1);
-  const ppn=num(lod.ppn);
-  const bk="https://www.booking.com/searchresults.it.html?ss="+q+"&checkin="+t.start+"&checkout="+t.end+"&group_adults="+nP;
-  const ab="https://www.airbnb.it/s/"+q+"/homes?checkin="+t.start+"&checkout="+t.end+"&adults="+nP;
-  const tc="https://www.trip.com/hotels/list?city=&checkin="+t.start+"&checkout="+t.end+"&keyword="+q;
-  if(ppn>0){
-    const perNight=ppn*nP, budTot=ppn*nP*nights;
-    let fascia,col;
-    if(ppn<15){fascia="stretta · ostelli";col="var(--warn)";}
-    else if(ppn<30){fascia="ostelli e appartamenti";col="var(--ok)";}
-    else if(ppn<60){fascia="hotel semplici";col="var(--ok)";}
-    else {fascia="hotel comodi";col="var(--ok)";}
-    calc.innerHTML='<b style="color:var(--brass)">'+eur(budTot)+'</b> totali · '+eur(perNight)+'/notte gruppo · <span style="color:'+col+'">'+fascia+'</span>';
-    links.innerHTML=
-      '<a class="prov hi" href="'+bk+'&nflt=price%253DEUR-1-'+Math.ceil(perNight)+'-1" target="_blank" rel="noopener"><span class="pv-ic">🏨</span><span class="pv-tx">Booking<small>≤ '+eur(Math.ceil(perNight))+'/notte</small></span></a>'
-      +'<a class="prov" href="'+ab+'&price_max='+Math.ceil(budTot)+'" target="_blank" rel="noopener"><span class="pv-ic">🏠</span><span class="pv-tx">Airbnb<small>≤ '+eur(Math.ceil(budTot))+' tot</small></span></a>'
-      +'<a class="prov wide" href="'+tc+'" target="_blank" rel="noopener"><span class="pv-ic">🌏</span><span class="pv-tx">Trip.com<small>hotel, spesso più economici</small></span></a>';
-  }else{
-    calc.innerHTML="Metti quanto volete spendere a testa a notte per il totale e la ricerca filtrata.";
-    links.innerHTML=
-      '<a class="prov hi" href="'+bk+'" target="_blank" rel="noopener"><span class="pv-ic">🏨</span><span class="pv-tx">Booking<small>'+nP+' persone</small></span></a>'
-      +'<a class="prov" href="'+ab+'" target="_blank" rel="noopener"><span class="pv-ic">🏠</span><span class="pv-tx">Airbnb<small>appartamenti</small></span></a>'
-      +'<a class="prov wide" href="'+tc+'" target="_blank" rel="noopener"><span class="pv-ic">🌏</span><span class="pv-tx">Trip.com<small>hotel</small></span></a>';
-  }
-}
-
-
-function renderRecap(t){
-  const icons={flight:"✈️",train:"🚆",bus:"🚌",car:"🚗"};
-  const b=budgetOf(t);
-  const nP=b.nP;
-  const lod=t.lodging||{},bud=b.bud;
-  let html="";
-  const trs=(t.transports||[]);
-  if(trs.length){
-    html+=trs.map(x=>'<div style="font-size:13.5px;padding:5px 0">'+(icons[x.type]||"🧭")+" "+esc(x.from||"?")+" → "+esc(x.to||"?")+" · "+pretty(x.date)+(x.time?(" "+esc(x.time)):"")+(x.note?(" · "+esc(x.note)):"")+'</div>').join("");
-  }else{
-    html+='<div class="hint">Nessuno spostamento ancora.</div>';
-  }
-  let lodLine;
-  if(lod.mode==="night")lodLine="🌙 Notte fuori — 0 €";
-  else{
-    const dove=(lod.zone||"").trim()||t.loc||"da definire";
-    lodLine="🛏 "+esc(dove)+" — "+(bud>0?("budget "+eur(bud)):"da definire");
-  }
-  html+='<div style="border-top:1px solid var(--line-soft);margin-top:6px;padding-top:8px;font-size:13.5px">'+lodLine+'</div>';
-  // prenotazione confermata: visibile a tutti, con link
-  const bk=(t.lodging&&t.lodging.booking)||null;
-  if(bk){
-    const p=bkProvider(bk.url);
-    html+='<div style="font-size:13px;margin-top:6px">'+p.i+' <b>'+esc(bk.name||"Prenotato")+'</b>'
-      +(num(bk.total)>0?(' · '+eur(num(bk.total))):"")
-      +(bk.url?(' · <a href="'+esc(bk.url)+'" target="_blank" rel="noopener" style="color:var(--brass)">apri</a>'):"")
-      +'</div>';
-  }
-  // stato turni sintetico: preferisci lo snapshot importato da Swap Planner
-  const days2=eventDays(t);
-  const crewP=(t.parts||[]).filter(p=>CREW_DB[p]&&!CREW_DB[p].noDuty);
-  if(t.swapSnap){
-    const snap=t.swapSnap;
-    let dutyLine,col;
-    if(snap.all_off){dutyLine="✅ Sono tutti OFF (sistemati su Swap Planner)";col="var(--ok)";}
-    else{
-      const w=(snap.workers||[]).map(x=>shortNm(x.name)+" "+(x.days||[]).map(pretty).join(", "));
-      const nPend=(snap.pending||[]).length;
-      dutyLine=(w.length?("⚠️ Tutti OFF tranne: "+w.join(" · ")):"Da sistemare")+(nPend?(" · ⏳ "+nPend+" in attesa"):"");
-      col="var(--warn)";
-    }
-    html+='<div style="border-top:1px solid var(--line-soft);margin-top:6px;padding-top:8px;font-size:13px;color:'+col+'">'+esc(dutyLine)+'</div>';
-  }else if(crewP.length&&days2.length){
-    const workers=[];
-    crewP.forEach(p=>{
-      const wd=days2.filter(d=>{const s=dutyFor(p,d);return s&&s.type!=="off";});
-      if(wd.length)workers.push(partLabel(p)+" "+wd.map(pretty).join(", "));
-    });
-    const dutyLine=workers.length
-      ?('⚠️ Tutti OFF tranne: '+workers.join(" · "))
-      :"✅ Sono tutti OFF nei giorni del viaggio";
-    html+='<div style="border-top:1px solid var(--line-soft);margin-top:6px;padding-top:8px;font-size:13px;color:'+(workers.length?"var(--warn)":"var(--ok)")+'">'+esc(dutyLine)+'</div>';
-  }
-  const tot=(lod.mode==="night")?0:bud;
-  if(tot>0){
-    html+='<div class="recap-tot"><b>Alloggio previsto</b><b>'+eur(tot)+'</b></div>'
-        +'<div style="display:flex;justify-content:space-between;font-size:13px;color:#8ba0c6;margin-top:2px"><span>A testa ('+nP+' pers.)</span><b>'+eur(tot/nP)+'</b></div>';
-  }
-  document.getElementById("recapBox").innerHTML=html;
-}
-
-/* ================= import turni da Swap Planner ================= */
-function shortNm(s){return String(s||"").split(" ")[0];}
-async function swapImport(t){
-  const box=document.getElementById("swapRecap");
-  const btn=document.getElementById("btnImpSwap");
-  if(!sbReady){box.innerHTML='<div class="hint">Sync non attiva: riprova tra qualche secondo.</div>';return;}
-  btn.textContent="Carico…";
-  try{
-    const res=await sb.from("swap_recap").select("*");
-    const all=res.data||[];
-    let snap=all.find(e=>snapMatchesTrip(e,t));
-    if(!snap){
-      box.innerHTML='<div class="hint">Nessun gruppo su Swap Planner combacia con questo viaggio. Aprilo su Swap Planner (stesso nome o stesse date) così il riepilogo viene generato, poi riprova.</div>';
-      btn.textContent="↻ Importa riepilogo da Swap Planner";return;
-    }
-    t.swapSnap=snap;touch(t);          // resta salvato e d'ora in poi si aggiorna da solo
-    renderSwapRecap(snap);
-    renderRecap(t);                    // aggiorna anche il riepilogo generale
-  }catch(e){
-    box.innerHTML='<div class="hint">Non riesco a leggere il riepilogo: '+esc(String(e.message||e))+'</div>';
-  }
-  btn.textContent="↻ Aggiorna da Swap Planner";
-}
-function renderSwapRecap(snap){
-  const box=document.getElementById("swapRecap");if(!box)return;
-  if(!snap){box.innerHTML="";return;}
-  const kindLbl={swap:"↔ swap",pending:"⏳ in attesa","A/L":"A/L",VTO:"VTO","non serve":"non serve",leave:"off"};
-  function row(r){
-    const day=r.day?(weekday(r.day)+" "+pretty(r.day)):"";
-    const by=r.by?(' <span style="color:var(--muted)">← '+esc(shortNm(r.by))+'</span>'):"";
-    const st=kindLbl[r.kind]||"✓ preso";
-    return '<div style="display:flex;justify-content:space-between;gap:8px;font-size:12.5px;padding:5px 0;border-top:1px solid var(--line-soft)"><span><b>'+esc(shortNm(r.who))+'</b>'+by+' <span style="color:var(--muted)">'+esc(day)+'</span></span><span style="color:var(--brass);font-family:\'IBM Plex Mono\',monospace;white-space:nowrap">'+esc(st)+'</span></div>';
-  }
-  const pend=snap.pending||[], done=snap.done||[];
-  let h='<div style="border:1px solid var(--line-soft);border-radius:12px;padding:12px 14px;background:rgba(255,255,255,.03)">';
-  h+='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:var(--brass);letter-spacing:.14em;text-transform:uppercase;margin-bottom:6px">Resoconto · '+esc(snap.name||"")+'</div>';
-  if(snap.all_off){
-    h+='<div style="color:var(--ok);font-weight:700;font-size:13.5px">✅ Tutti sistemati: nessun turno da coprire.</div>';
-  }else if(!pend.length&&!done.length){
-    h+='<div class="hint">Nessun cambio registrato su Swap Planner per questo gruppo.</div>';
-  }
-  if(pend.length){h+='<div style="font-size:11px;color:var(--warn);font-weight:700;margin:8px 0 0">⏳ IN ATTESA · '+pend.length+'</div>'+pend.map(row).join("");}
-  if(done.length){h+='<div style="font-size:11px;color:var(--ok);font-weight:700;margin:10px 0 0">✓ PRESI · '+done.length+'</div>'+done.map(row).join("");}
-  h+='</div>';
-  if(snap&&snap.updated_at){
-    h+='<div class="hint" style="margin-top:8px;font-size:11px">🔄 Si aggiorna da solo quando cambia su Swap Planner · ultimo: '+esc((snap.updated_at||"").slice(0,16).replace("T"," "))+'</div>';
-  }
-  box.innerHTML=h;
 }
 
 async function fsImport(t){
