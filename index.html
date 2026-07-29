@@ -483,7 +483,7 @@
         <div class="sb">
           <div id="bkView"></div>
           <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
-            <button class="btn ghost small" id="btnBkPaste">📋 Incolla conferma</button>
+            <button class="btn ghost small" id="btnBkPaste">📷 Aggiungi da screenshot o testo</button>
             <button class="btn ghost small" id="btnBkEdit">✏️ Inserisci a mano</button>
           </div>
         </div>
@@ -1076,38 +1076,144 @@ function renderBooking(t){
   if(b.url)h+='<div class="provs" style="margin-top:10px"><a class="prov hi wide" href="'+esc(b.url)+'" target="_blank" rel="noopener"><span class="pv-ic">'+p.i+'</span><span class="pv-tx">Apri la prenotazione<small>'+esc(p.n)+'</small></span></a></div>';
   box.innerHTML=h;
 }
-/* legge i dati piu comuni da una mail di conferma incollata */
+/* legge i dati da testo incollato o da screenshot (OCR) */
+// parser prenotazioni: tollerante a formati IT/EN e ai testi da OCR
+function pbDate(str){
+  if(!str)return "";
+  var s=String(str).trim();
+  var m=s.match(/^(20\d{2})-(\d{1,2})-(\d{1,2})$/);
+  if(m)return m[1]+"-"+("0"+m[2]).slice(-2)+"-"+("0"+m[3]).slice(-2);
+  m=s.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](20\d{2})$/);
+  if(m)return m[3]+"-"+("0"+m[2]).slice(-2)+"-"+("0"+m[1]).slice(-2);
+  var MESI={gen:1,feb:2,mar:3,apr:4,mag:5,giu:6,lug:7,ago:8,set:9,ott:10,nov:11,dic:12,
+            jan:1,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,dec:12};
+  m=s.match(/(\d{1,2})\s+([a-zà-ù]{3,})\.?\s+(20\d{2})/i);
+  if(m){var k=m[2].slice(0,3).toLowerCase(); if(MESI[k])return m[3]+"-"+("0"+MESI[k]).slice(-2)+"-"+("0"+m[1]).slice(-2);}
+  m=s.match(/([a-zà-ù]{3,})\.?\s+(\d{1,2}),?\s+(20\d{2})/i);
+  if(m){var k2=m[1].slice(0,3).toLowerCase(); if(MESI[k2])return m[3]+"-"+("0"+MESI[k2]).slice(-2)+"-"+("0"+m[2]).slice(-2);}
+  return "";
+}
+function pbAllDates(T){
+  var re=/(20\d{2}-\d{1,2}-\d{1,2}|\d{1,2}[\/.\-]\d{1,2}[\/.\-]20\d{2}|\d{1,2}\s+[a-zà-ù]{3,}\.?\s+20\d{2}|[a-zà-ù]{3,}\.?\s+\d{1,2},?\s+20\d{2})/gi;
+  var out=[],m;
+  while((m=re.exec(T))!==null){var d=pbDate(m[1]); if(d)out.push(d);}
+  return out;
+}
+function pbNum(s){
+  if(!s)return "";
+  s=String(s).trim();
+  if(/,\d{1,2}$/.test(s)) s=s.replace(/\./g,"").replace(",",".");
+  else s=s.replace(/,/g,"");
+  var v=parseFloat(s);
+  return isFinite(v)?String(v):"";
+}
 function parseBooking(txt){
-  const out={},T=String(txt||"");
-  const url=T.match(/https?:\/\/[^\s<>"']+/);
+  var out={},T=String(txt||"").replace(/\u00a0/g," ");
+  var lines=T.split(/\n/).map(function(x){return x.trim();}).filter(Boolean);
+
+  var url=T.match(/https?:\/\/[^\s<>"']+/);
   if(url)out.url=url[0];
-  const ref=T.match(/(?:conferma|confirmation|prenotazione|booking)\s*(?:number|n[.\u00b0o]?|code|id)?\s*[:#]?\s*([A-Z0-9]{6,})/i);
+
+  // check-in / check-out per etichetta, altrimenti prime due date trovate
+  var ci=T.match(/(?:check[\s\-]?in|arrivo|arrival)[^\d]{0,25}([^\n]{6,30})/i);
+  var co=T.match(/(?:check[\s\-]?out|partenza|departure)[^\d]{0,25}([^\n]{6,30})/i);
+  if(ci)out.checkin=pbDate((ci[1].match(/(20\d{2}-\d{1,2}-\d{1,2}|\d{1,2}[\/.\-]\d{1,2}[\/.\-]20\d{2}|\d{1,2}\s+[a-zà-ù]{3,}\.?\s+20\d{2}|[a-zà-ù]{3,}\.?\s+\d{1,2},?\s+20\d{2})/i)||[])[1]);
+  if(co)out.checkout=pbDate((co[1].match(/(20\d{2}-\d{1,2}-\d{1,2}|\d{1,2}[\/.\-]\d{1,2}[\/.\-]20\d{2}|\d{1,2}\s+[a-zà-ù]{3,}\.?\s+20\d{2}|[a-zà-ù]{3,}\.?\s+\d{1,2},?\s+20\d{2})/i)||[])[1]);
+  if(!out.checkin||!out.checkout){
+    var ds=pbAllDates(T);
+    if(!out.checkin&&ds[0])out.checkin=ds[0];
+    if(!out.checkout&&ds[1])out.checkout=ds[1];
+  }
+
+  // importo: prendi solo cifre legate alla valuta, quella dopo "totale" se c'è
+  var amts=[],ra=/(?:€|EUR)\s*(\d[\d.,]*)|(\d[\d.,]*)\s*(?:€|EUR)/gi,ma;
+  while((ma=ra.exec(T))!==null){ amts.push({i:ma.index,v:pbNum(ma[1]||ma[2])}); }
+  amts=amts.filter(function(a){return a.v!=="";});
+  if(amts.length){
+    var lab=T.search(/totale|total|importo|amount|prezzo|price/i);
+    var pick=null;
+    if(lab>=0)pick=amts.find(function(a){return a.i>=lab;});
+    if(!pick)pick=amts.reduce(function(x,y){return parseFloat(y.v)>parseFloat(x.v)?y:x;});
+    out.total=pick.v;
+  }
+  // riferimento prenotazione
+  var ref=T.match(/(?:numero di prenotazione|booking number|confirmation code|codice di conferma|order no\.?|ordine|rif\.?|ref\.?)\s*[:#]?\s*([A-Z0-9][A-Z0-9\-]{4,})/i);
   if(ref)out.ref=ref[1];
-  const tot=T.match(/(?:totale|total|prezzo|price|importo)[^0-9]{0,20}([0-9]+(?:[.,][0-9]{1,2})?)/i);
-  if(tot)out.total=tot[1].replace(",",".");
-  const eur2=!tot&&T.match(/(?:€|EUR)\s*([0-9]+(?:[.,][0-9]{1,2})?)/i);
-  if(eur2)out.total=eur2[1].replace(",",".");
-  const iso=T.match(/(20[0-9]{2}-[0-9]{2}-[0-9]{2})[\s\S]{0,40}?(20[0-9]{2}-[0-9]{2}-[0-9]{2})/);
-  if(iso){out.checkin=iso[1];out.checkout=iso[2];}
-  const lines=T.split(/\n/).map(x=>x.trim()).filter(Boolean);
-  const skip=/^(gentile|caro|ciao|dear|hello|conferma|confirmation|grazie|thank)/i;
-  const cand=lines.find(l=>l.length>3&&l.length<70&&!skip.test(l)&&!/^https?:/i.test(l)&&!/[€]/.test(l));
-  if(cand)out.name=cand;
-  const addr=lines.find(l=>l!==cand&&/via |viale |piazza |street|str\.|calle |avenue|ave\.|road|rd\.|c\/ |,\s*\d/i.test(l));
+  if(!out.ref&&out.url){
+    var q=out.url.match(/(?:bn|id|code)=([A-Z0-9\-]{5,})/i);
+    if(q)out.ref=q[1];
+  }
+
+  // nome struttura: prima riga "pulita" che non sia un'intestazione
+  var skip=/^(gentile|caro|ciao|dear|hello|hi\b|conferma|confermat|confirm|your |la tua|grazie|thank|prenotazione confermata|booking confirmed)/i;
+  var isData=function(l){
+    return /^https?:/i.test(l) || /[€]|EUR/i.test(l) ||
+           /check[\s\-]?in|check[\s\-]?out|arrivo|partenza|arrival|departure/i.test(l) ||
+           /prenotazione|booking|confirmation|order|rif\.|ref\.|pin/i.test(l) ||
+           pbAllDates(l).length>0;
+  };
+  var name=lines.find(function(l){return l.length>2&&l.length<70&&!skip.test(l)&&!isData(l);});
+  if(name)out.name=name;
+
+  // indirizzo: riga con parola tipica di via o con CAP/numero civico
+  var addr=lines.find(function(l){
+    return l!==name && !isData(l) &&
+      (/(^|\s)(via|viale|piazza|corso|calle|carrer|rua|street|st\.|avenue|ave\.|road|rd\.|strasse|straße)\s/i.test(l) ||
+       /\d{4,5}\s+[A-Za-zÀ-ù]/.test(l) || /,\s*\d+/.test(l));
+  });
   if(addr)out.addr=addr;
   return out;
 }
 function bookingPasteForm(t){
-  openModal('<h3>Incolla la conferma</h3>'
-    +'<p class="hint" style="margin-top:6px;text-transform:none;letter-spacing:0">Copia il testo della mail di conferma (o anche solo il link) e incollalo qui: provo a estrarre struttura, date, importo e numero di prenotazione. Poi puoi correggere tutto.</p>'
-    +'<textarea id="bkPaste" rows="7" style="margin-top:10px" placeholder="Incolla qui..."></textarea>'
-    +'<div class="mrow"><button class="btn ghost" id="bkPCancel">Annulla</button><button class="btn primary" id="bkPGo">Leggi</button></div>');
+  openModal('<h3>Aggiungi prenotazione</h3>'
+    +'<p class="hint" style="margin-top:6px;text-transform:none;letter-spacing:0">Scegli il modo piu comodo: leggo i dati e poi ti faccio correggere quello che serve.</p>'
+    +'<div class="provs" style="margin-top:12px">'
+    +'<button class="prov hi wide" id="bkShot"><span class="pv-ic">📷</span><span class="pv-tx">Screenshot della prenotazione<small>scatto o foto dalla galleria</small></span></button>'
+    +'<button class="prov wide" id="bkTxt"><span class="pv-ic">📋</span><span class="pv-tx">Testo o link<small>incolla la mail di conferma</small></span></button>'
+    +'</div>'
+    +'<input type="file" id="bkFile" accept="image/*" style="display:none">'
+    +'<div id="bkProg" class="hint" style="margin-top:12px;display:none"></div>'
+    +'<div class="mrow"><button class="btn ghost" id="bkPCancel">Annulla</button></div>');
   mBody.querySelector("#bkPCancel").onclick=closeModal;
-  mBody.querySelector("#bkPGo").onclick=()=>{
+  mBody.querySelector("#bkTxt").onclick=()=>bookingTextForm(t);
+  const file=mBody.querySelector("#bkFile");
+  mBody.querySelector("#bkShot").onclick=()=>file.click();
+  file.onchange=()=>{ if(file.files&&file.files[0])bookingFromImage(t,file.files[0]); };
+}
+function bookingTextForm(t){
+  openModal('<h3>Incolla la conferma</h3>'
+    +'<p class="hint" style="margin-top:6px;text-transform:none;letter-spacing:0">Va bene anche solo il link. Quello che non trovo lo compili tu.</p>'
+    +'<textarea id="bkPaste" rows="7" style="margin-top:10px" placeholder="Incolla qui..."></textarea>'
+    +'<div class="mrow"><button class="btn ghost" id="bkTCancel">Indietro</button><button class="btn primary" id="bkTGo">Leggi</button></div>');
+  mBody.querySelector("#bkTCancel").onclick=()=>bookingPasteForm(t);
+  mBody.querySelector("#bkTGo").onclick=()=>{
     const parsed=parseBooking(mBody.querySelector("#bkPaste").value);
-    const cur=bookingOf(t)||{};
-    bookingForm(t,Object.assign({},cur,parsed));
+    bookingForm(t,Object.assign({},bookingOf(t)||{},parsed));
   };
+}
+/* OCR dello screenshot: legge il testo dall'immagine e poi usa lo stesso parser */
+function bookingFromImage(t,file){
+  const prog=document.getElementById("bkProg");
+  const show=m=>{ if(prog){prog.style.display="";prog.textContent=m;} };
+  show("Carico il lettore di testo…");
+  const run=()=>{
+    show("Leggo lo screenshot… (puo richiedere qualche secondo)");
+    window.Tesseract.recognize(file,"ita+eng",{logger:m=>{
+      if(m.status==="recognizing text")show("Leggo lo screenshot… "+Math.round((m.progress||0)*100)+"%");
+    }}).then(res=>{
+      const txt=(res&&res.data&&res.data.text)||"";
+      if(!txt.trim()){show("Non sono riuscito a leggere il testo. Prova col testo incollato.");return;}
+      bookingForm(t,Object.assign({},bookingOf(t)||{},parseBooking(txt)));
+    }).catch(err=>{
+      show("Lettura non riuscita: "+String((err&&err.message)||err)+". Puoi usare il testo o inserire a mano.");
+    });
+  };
+  if(window.Tesseract){run();return;}
+  const sc=document.createElement("script");
+  sc.src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
+  sc.onload=run;
+  sc.onerror=()=>show("Non riesco a caricare il lettore (serve internet). Usa il testo o inserisci a mano.");
+  document.head.appendChild(sc);
 }
 function bookingForm(t,pre){
   const b=pre||bookingOf(t)||{};
