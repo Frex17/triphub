@@ -239,7 +239,7 @@
     box-shadow:0 8px 32px rgba(0,0,0,.20), 0 1px 3px rgba(0,0,0,.10), inset 0 .5px 0 rgba(255,255,255,.45);
     transition:transform .3s cubic-bezier(.4,0,.2,1), opacity .22s ease}
   .appnav.navoff{transform:translateY(calc(100% + 30px));opacity:0;pointer-events:none}
-  .appnav a,.appnav button,.appnav span.on{
+  .appnav>a,.appnav>button,.appnav>span{
     -webkit-appearance:none;appearance:none;
     flex:1 1 0;min-width:0;
     display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
@@ -249,9 +249,9 @@
     color:var(--nav-mut);background:transparent;border:0;cursor:pointer;
     -webkit-tap-highlight-color:transparent;
     transition:background .12s ease, transform .12s ease}
-  .appnav a.press,.appnav button.press{background:var(--nav-press);transform:scale(.93)}
+  .appnav>a.press,.appnav>button.press{background:var(--nav-press);transform:scale(.93)}
   .appnav .ai{font-size:21px;line-height:1}
-  .appnav .on{color:var(--nav-on);background:var(--nav-on-bg)}
+  .appnav>a.on,.appnav>button.on,.appnav>span.on{color:var(--nav-on);background:var(--nav-on-bg)}
   html[data-os="android"] .appnav{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--nav-solid)}
 </style>
 </head>
