@@ -325,7 +325,7 @@
     box-shadow:0 8px 32px rgba(0,0,0,.20), 0 1px 3px rgba(0,0,0,.10), inset 0 .5px 0 rgba(255,255,255,.45);
     transition:transform .3s cubic-bezier(.4,0,.2,1), opacity .22s ease}
   .appnav.navoff{transform:translateY(calc(100% + 30px));opacity:0;pointer-events:none}
-  .appnav a,.appnav button,.appnav span.on{
+  .appnav>a,.appnav>button,.appnav>span{
     -webkit-appearance:none;appearance:none;
     flex:1 1 0;min-width:0;
     display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
@@ -335,9 +335,9 @@
     color:var(--nav-mut);background:transparent;border:0;cursor:pointer;
     -webkit-tap-highlight-color:transparent;
     transition:background .12s ease, transform .12s ease}
-  .appnav a.press,.appnav button.press{background:var(--nav-press);transform:scale(.93)}
+  .appnav>a.press,.appnav>button.press{background:var(--nav-press);transform:scale(.93)}
   .appnav .ai{font-size:21px;line-height:1}
-  .appnav .on{color:var(--nav-on);background:var(--nav-on-bg)}
+  .appnav>a.on,.appnav>button.on,.appnav>span.on{color:var(--nav-on);background:var(--nav-on-bg)}
   html[data-os="android"] .appnav{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--nav-solid)}
 </style>
 </head>
@@ -475,6 +475,17 @@
           <label>Note</label>
           <textarea id="lodNote" rows="2" placeholder="Idee, link, chi prenota, camere..."></textarea>
           <div class="links" id="lodLinks"></div>
+        </div>
+      </div>
+
+      <div class="sect">
+        <div class="sh">📄 Prenotazione<span class="n" id="bkN"></span></div>
+        <div class="sb">
+          <div id="bkView"></div>
+          <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+            <button class="btn ghost small" id="btnBkPaste">📋 Incolla conferma</button>
+            <button class="btn ghost small" id="btnBkEdit">✏️ Inserisci a mano</button>
+          </div>
         </div>
       </div>
     </div>
@@ -1014,6 +1025,7 @@ function renderTrip(resetTab){
   lb.oninput=()=>{lod.ppn=lb.value;touch(t);renderLodCalc(t);renderRecap(t);};
   lz.oninput=()=>{lod.zone=lz.value;touch(t);renderLodCalc(t);};
   renderLodCalc(t);
+  renderBooking(t);
   const oneNight=t.start&&t.end&&daysBetween(t.start,t.end)===1;
   if(oneNight&&lod.mode!=="night"){
     document.getElementById("lodNightHint").classList.remove("hidden");
@@ -1024,6 +1036,110 @@ function renderTrip(resetTab){
 
   renderRecap(t);
   document.getElementById("dFoot").textContent="Aggiornato: "+(t.updated_at||"").slice(0,16).replace("T"," ");
+}
+
+/* ================= prenotazione alloggio ================= */
+function bookingOf(t){ if(!t.lodging)t.lodging={}; return t.lodging.booking||null; }
+function bkProvider(url){
+  const u=String(url||"").toLowerCase();
+  if(u.includes("booking.com"))return{n:"Booking",i:"🏨"};
+  if(u.includes("airbnb"))return{n:"Airbnb",i:"🏠"};
+  if(u.includes("trip.com"))return{n:"Trip.com",i:"🌏"};
+  if(u.includes("hostelworld"))return{n:"Hostelworld",i:"🎒"};
+  if(u.includes("expedia"))return{n:"Expedia",i:"✈️"};
+  return{n:"Prenotazione",i:"📄"};
+}
+function renderBooking(t){
+  const box=document.getElementById("bkView");if(!box)return;
+  const b=bookingOf(t);
+  const n=document.getElementById("bkN");
+  if(!b){
+    if(n)n.textContent="";
+    box.innerHTML='<div class="hint">Nessuna prenotazione registrata. Incolla la mail di conferma e provo a leggerla da solo, oppure inseriscila a mano.</div>';
+    return;
+  }
+  const p=bkProvider(b.url);
+  if(n)n.textContent=p.n;
+  const nP=Math.max(1,(t.parts||[]).length);
+  let h='<div style="border:1px solid var(--line-soft);border-radius:12px;padding:12px 14px;background:rgba(255,255,255,.03)">';
+  h+='<div style="font-size:15px;font-weight:700">'+p.i+' '+esc(b.name||"(struttura)")+'</div>';
+  if(b.addr)h+='<div style="font-size:12.5px;color:var(--muted);margin-top:2px">📍 '+esc(b.addr)+'</div>';
+  const dIn=b.checkin||t.start, dOut=b.checkout||t.end;
+  if(dIn)h+='<div style="font-size:12.5px;color:var(--muted);margin-top:4px">🗓 '+pretty(dIn)+(dOut?(" → "+pretty(dOut)):"")+'</div>';
+  if(b.ref)h+='<div style="font-size:12px;color:var(--muted);margin-top:4px;font-family:\'IBM Plex Mono\',monospace">N. '+esc(b.ref)+'</div>';
+  if(num(b.total)>0){
+    h+='<div class="recap-tot" style="margin-top:10px;padding-top:10px"><b>Totale</b><b>'+eur(num(b.total))+'</b></div>';
+    h+='<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-top:2px"><span>A testa ('+nP+')</span><b>'+eur(num(b.total)/nP)+'</b></div>';
+  }
+  if(b.who)h+='<div style="font-size:12.5px;color:var(--muted);margin-top:6px">Prenotato da '+esc(b.who)+'</div>';
+  h+='</div>';
+  if(b.url)h+='<div class="provs" style="margin-top:10px"><a class="prov hi wide" href="'+esc(b.url)+'" target="_blank" rel="noopener"><span class="pv-ic">'+p.i+'</span><span class="pv-tx">Apri la prenotazione<small>'+esc(p.n)+'</small></span></a></div>';
+  box.innerHTML=h;
+}
+/* legge i dati piu comuni da una mail di conferma incollata */
+function parseBooking(txt){
+  const out={},T=String(txt||"");
+  const url=T.match(/https?:\/\/[^\s<>"']+/);
+  if(url)out.url=url[0];
+  const ref=T.match(/(?:conferma|confirmation|prenotazione|booking)\s*(?:number|n[.\u00b0o]?|code|id)?\s*[:#]?\s*([A-Z0-9]{6,})/i);
+  if(ref)out.ref=ref[1];
+  const tot=T.match(/(?:totale|total|prezzo|price|importo)[^0-9]{0,20}([0-9]+(?:[.,][0-9]{1,2})?)/i);
+  if(tot)out.total=tot[1].replace(",",".");
+  const eur2=!tot&&T.match(/(?:€|EUR)\s*([0-9]+(?:[.,][0-9]{1,2})?)/i);
+  if(eur2)out.total=eur2[1].replace(",",".");
+  const iso=T.match(/(20[0-9]{2}-[0-9]{2}-[0-9]{2})[\s\S]{0,40}?(20[0-9]{2}-[0-9]{2}-[0-9]{2})/);
+  if(iso){out.checkin=iso[1];out.checkout=iso[2];}
+  const lines=T.split(/\n/).map(x=>x.trim()).filter(Boolean);
+  const skip=/^(gentile|caro|ciao|dear|hello|conferma|confirmation|grazie|thank)/i;
+  const cand=lines.find(l=>l.length>3&&l.length<70&&!skip.test(l)&&!/^https?:/i.test(l)&&!/[€]/.test(l));
+  if(cand)out.name=cand;
+  const addr=lines.find(l=>l!==cand&&/via |viale |piazza |street|str\.|calle |avenue|ave\.|road|rd\.|c\/ |,\s*\d/i.test(l));
+  if(addr)out.addr=addr;
+  return out;
+}
+function bookingPasteForm(t){
+  openModal('<h3>Incolla la conferma</h3>'
+    +'<p class="hint" style="margin-top:6px;text-transform:none;letter-spacing:0">Copia il testo della mail di conferma (o anche solo il link) e incollalo qui: provo a estrarre struttura, date, importo e numero di prenotazione. Poi puoi correggere tutto.</p>'
+    +'<textarea id="bkPaste" rows="7" style="margin-top:10px" placeholder="Incolla qui..."></textarea>'
+    +'<div class="mrow"><button class="btn ghost" id="bkPCancel">Annulla</button><button class="btn primary" id="bkPGo">Leggi</button></div>');
+  mBody.querySelector("#bkPCancel").onclick=closeModal;
+  mBody.querySelector("#bkPGo").onclick=()=>{
+    const parsed=parseBooking(mBody.querySelector("#bkPaste").value);
+    const cur=bookingOf(t)||{};
+    bookingForm(t,Object.assign({},cur,parsed));
+  };
+}
+function bookingForm(t,pre){
+  const b=pre||bookingOf(t)||{};
+  const has=!!bookingOf(t);
+  openModal('<h3>Prenotazione</h3>'
+    +'<label>Struttura</label><input id="bkName" value="'+esc(b.name||"")+'" placeholder="Es. Hostel Gran Via">'
+    +'<label>Indirizzo</label><input id="bkAddr" value="'+esc(b.addr||"")+'" placeholder="Via, città">'
+    +'<div class="grid2"><div><label>Check-in</label><input type="date" id="bkIn" value="'+esc(b.checkin||t.start||"")+'"></div>'
+    +'<div><label>Check-out</label><input type="date" id="bkOut" value="'+esc(b.checkout||t.end||"")+'"></div></div>'
+    +'<div class="grid2"><div><label>Totale (€)</label><input type="number" id="bkTot" inputmode="decimal" value="'+esc(b.total||"")+'"></div>'
+    +'<div><label>N. prenotazione</label><input id="bkRef" value="'+esc(b.ref||"")+'"></div></div>'
+    +'<label>Link alla prenotazione</label><input id="bkUrl" value="'+esc(b.url||"")+'" placeholder="https://...">'
+    +'<label>Prenotato da</label><input id="bkWho" value="'+esc(b.who||"")+'" placeholder="Chi ha prenotato">'
+    +'<div class="mrow">'+(has?'<button class="btn danger" id="bkDel">Elimina</button>':'')
+    +'<button class="btn ghost" id="bkCancel">Annulla</button><button class="btn primary" id="bkSave">Salva</button></div>');
+  mBody.querySelector("#bkCancel").onclick=closeModal;
+  const del=mBody.querySelector("#bkDel");
+  if(del)del.onclick=()=>{if(!confirm("Eliminare la prenotazione?"))return;t.lodging.booking=null;touch(t);closeModal();renderTrip();};
+  mBody.querySelector("#bkSave").onclick=()=>{
+    if(!t.lodging)t.lodging={};
+    t.lodging.booking={
+      name:mBody.querySelector("#bkName").value.trim(),
+      addr:mBody.querySelector("#bkAddr").value.trim(),
+      checkin:mBody.querySelector("#bkIn").value,
+      checkout:mBody.querySelector("#bkOut").value,
+      total:mBody.querySelector("#bkTot").value,
+      ref:mBody.querySelector("#bkRef").value.trim(),
+      url:mBody.querySelector("#bkUrl").value.trim(),
+      who:mBody.querySelector("#bkWho").value.trim()
+    };
+    touch(t);closeModal();renderTrip();
+  };
 }
 
 function renderLodCalc(t){
@@ -1083,6 +1199,15 @@ function renderRecap(t){
     lodLine="🛏 "+esc(dove)+" — "+(bud>0?("budget "+eur(bud)):"da definire");
   }
   html+='<div style="border-top:1px solid var(--line-soft);margin-top:6px;padding-top:8px;font-size:13.5px">'+lodLine+'</div>';
+  // prenotazione confermata: visibile a tutti, con link
+  const bk=(t.lodging&&t.lodging.booking)||null;
+  if(bk){
+    const p=bkProvider(bk.url);
+    html+='<div style="font-size:13px;margin-top:6px">'+p.i+' <b>'+esc(bk.name||"Prenotato")+'</b>'
+      +(num(bk.total)>0?(' · '+eur(num(bk.total))):"")
+      +(bk.url?(' · <a href="'+esc(bk.url)+'" target="_blank" rel="noopener" style="color:var(--brass)">apri</a>'):"")
+      +'</div>';
+  }
   // stato turni sintetico: preferisci lo snapshot importato da Swap Planner
   const days2=eventDays(t);
   const crewP=(t.parts||[]).filter(p=>CREW_DB[p]&&!CREW_DB[p].noDuty);
@@ -1355,6 +1480,8 @@ function init(){
   document.querySelectorAll("#tripTabs button").forEach(b=>b.onclick=()=>switchTab(b.dataset.p));
   document.getElementById("btnAddTr").onclick=()=>{const t=cur();if(t)transportForm(t);};
   document.getElementById("btnImpFS").onclick=()=>{const t=cur();if(t)fsImport(t);};
+  document.getElementById("btnBkPaste").onclick=()=>{const t=cur();if(t)bookingPasteForm(t);};
+  document.getElementById("btnBkEdit").onclick=()=>{const t=cur();if(t)bookingForm(t);};
   document.getElementById("btnImpSwap").onclick=()=>{const t=cur();if(t)swapImport(t);};
   document.getElementById("tripToSwap").onclick=()=>{const t=cur();if(t)importTripToSwap(t);};
   document.getElementById("tripToFS").onclick=()=>{const t=cur();if(t)importTripToFS(t);};
