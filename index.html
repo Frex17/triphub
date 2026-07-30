@@ -412,6 +412,20 @@
   .lvacts button small{font-weight:500;font-size:10.5px;color:var(--muted)}
   .lvacts button:active{transform:scale(.96)}
   .lvacts button[disabled]{opacity:.4;pointer-events:none}
+  .lvday.tkb{box-shadow:inset 0 0 0 2px rgba(116,174,232,.75)}
+  .lvday.tka{box-shadow:inset 0 0 0 2px rgba(198,163,90,.85)}
+  .lvday.tkb .dn,.lvday.tka .dn{text-decoration:underline}
+  .lvsep{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--brass);margin:10px 0 2px;padding-top:8px;border-top:1px solid var(--line-soft)}
+  .lvsep:first-child{margin-top:0;padding-top:0;border-top:0}
+  .lvline{width:100%;display:flex;align-items:center;gap:10px;background:transparent;border:0;
+    border-top:1px solid var(--line-soft);padding:11px 2px;font-family:inherit;font-size:13.5px;
+    color:var(--ink);cursor:pointer;text-align:left;-webkit-tap-highlight-color:transparent}
+  .lvline:first-of-type{border-top:0}
+  .lvline .dt{flex:1;min-width:0;font-weight:600}
+  .lvline .alt{font-size:11.5px;color:var(--muted);font-family:"IBM Plex Mono",monospace}
+  .lvline .go{color:var(--muted);font-size:16px}
+  .lvline:active{opacity:.6}
 </style>
 </head>
 <body>
@@ -1199,7 +1213,7 @@ const LV_BLOCKS=3, LV_ALTS=5, LV_BLOCKLEN=5;
    Full-time: almeno 2 blocchi invernali E 1 estivo. Il resto come ad hoc.
    Part-time: almeno 1 blocco invernale. Il resto come ad hoc.
    5+ anni di servizio: 2 giorni festivi (B/HOL) in piu, da chiedere come ad hoc. */
-const LV_GROUPS={SALIFR:"A", NUZZMA:"A", RUSANG:"C", AVILXI:"C"};
+const LV_GROUPS={SALIFR:"A", NUZZMA:"A", RUSANG:"B", AVILXI:"B"};
 const LV_BHOL=2, LV_BASE_DAYS=20;
 /* Finestre di candidatura per l'anno di ferie: si aprono l'anno precedente.
    [apre, chiude, esito] in formato MM-DD */
@@ -1256,7 +1270,6 @@ function isWinterDay(iso){
   const winEnd=lastDow(y,3,6);      // ultimo sabato di marzo
   return iso>=winStart||iso<=winEnd;
 }
-function blockEnd(start){return addDays(start,LV_BLOCKLEN-1);}
 function fmtRange(a,b){return pretty(a)+" → "+pretty(b);}
 
 /* giorni impegnati: 3 blocchi da 5 + 5 ad hoc = 20 */
@@ -1341,19 +1354,23 @@ function renderLeave(keepScroll){
    +'<button id="lvAddAdhoc"'+(na>=maxA?" disabled":"")+'><span class="bi">📌</span>Aggiungi giorno<small>'+na+'/'+maxA+' · ad hoc</small></button>'
    +'</div>';
 
-  /* ---- elenco di quello che ho gia' scelto ---- */
-  const mine=[];
-  (r.blocks||[]).forEach(b=>{ if(b.pref&&b.pref.start)
-    mine.push({d:b.pref.start,txt:(b.type==="winter"?"❄️":"☀️")+" "+fmtRange(b.pref.start,b.pref.end),
-               sub:(b.alts||[]).length+" alternative"}); });
-  (r.adhoc||[]).forEach(a=>{ if(a.pref)
-    mine.push({d:a.pref,txt:"📌 "+pretty(a.pref),sub:(a.alts||[]).length+" alternative"}); });
-  mine.sort((a,b)=>a.d.localeCompare(b.d));
-  if(mine.length){
-    h+='<div class="sect"><div class="sh">🗓 Le mie ferie '+lvYear+'</div><div class="sb">'
-      +mine.map(x=>'<div class="lvrow"><span class="dt">'+x.txt+'</span>'
-        +'<span style="font-size:11.5px;color:var(--muted)">'+x.sub+'</span></div>').join("")
-      +'</div></div>';
+  /* ---- elenco: blocchi e ad hoc separati ---- */
+  const mb=(r.blocks||[]).filter(b=>b.pref&&b.pref.start)
+    .sort((a,b)=>a.pref.start.localeCompare(b.pref.start));
+  const ma=(r.adhoc||[]).filter(a=>a.pref).sort((a,b)=>a.pref.localeCompare(b.pref));
+  if(mb.length||ma.length){
+    h+='<div class="sect"><div class="sh">🗓 Le mie ferie '+lvYear+'</div><div class="sb">';
+    if(mb.length){
+      h+='<div class="lvsep">🧱 Blocchi</div>'
+       +mb.map(b=>'<div class="lvrow"><span class="dt">'+(b.type==="winter"?"❄️":"☀️")+" "+fmtRange(b.pref.start,b.pref.end)+'</span>'
+         +'<span style="font-size:11.5px;color:var(--muted)">'+(b.alts||[]).length+' alt.</span></div>').join("");
+    }
+    if(ma.length){
+      h+='<div class="lvsep">📌 Giorni ad hoc</div>'
+       +ma.map(a=>'<div class="lvrow"><span class="dt">'+pretty(a.pref)+'</span>'
+         +'<span style="font-size:11.5px;color:var(--muted)">'+(a.alts||[]).length+' alt.</span></div>').join("");
+    }
+    h+='</div></div>';
   }
 
   /* blocchi */
@@ -1372,18 +1389,14 @@ function renderLeave(keepScroll){
   });
   h+='</div></div>';
 
-  /* ad hoc */
+  /* ad hoc: elenco compatto, una riga per giorno */
   h+='<div class="sect"><div class="sh">📌 Giorni ad hoc<span class="n">'+na+'/'+maxA+'</span></div><div class="sb">';
   if(!na)h+='<div class="lvempty">Giorni singoli, ognuno con fino a '+LV_ALTS+' alternative.</div>';
   (r.adhoc||[]).forEach((a,ai)=>{
-    h+='<div class="lvblock"><div class="lvhead"><div><b style="font-size:13.5px">Giorno '+(ai+1)+'</b></div>'
-      +'<button class="btn ghost small" data-ea="'+ai+'">Modifica</button></div>';
-    if(a.pref)h+='<div class="lvrow pref"><span class="rk">1°</span><span class="dt">'+pretty(a.pref)+'</span></div>';
-    else h+='<div class="lvempty">Preferenza non impostata</div>';
-    (a.alts||[]).forEach((d,di)=>{
-      h+='<div class="lvrow"><span class="rk">'+(di+2)+'°</span><span class="dt">'+pretty(d)+'</span></div>';
-    });
-    h+='</div>';
+    h+='<button class="lvline" data-ea="'+ai+'">'
+      +'<span class="dt">'+(a.pref?pretty(a.pref):"da scegliere")+'</span>'
+      +'<span class="alt">'+((a.alts||[]).length)+' alt.</span>'
+      +'<span class="go">›</span></button>';
   });
   h+='</div></div>';
 
@@ -1438,14 +1451,43 @@ function lvMonthShift(ym,n){
   const d=new Date(Date.UTC(y,m,1));
   return d.toISOString().slice(0,7);
 }
+/* Nel calendario ferie serve lo schema base del roster (blocco early / blocco late),
+   non il flex: cosi si vede bene l'alternanza e si capisce dove cadono le ferie. */
+function dutyBase(code,day){
+  const d=CREW_DB[code];if(!d||d.noDuty)return null;
+  const p=mod((parityEarly()?0:8)+daysBetween(ANCHOR_DATE,day)-(d.roster-ANCHOR_ROSTER),16);
+  if(p<=4)return{type:"early",day:p+1};
+  if(p<=7)return{type:"off"};
+  if(p<=12)return{type:"late",day:p-7};
+  return{type:"off"};
+}
+/* blocco di lavoro che contiene quel giorno: dal primo all'ultimo giorno lavorativo */
+function workBlockAt(person,iso){
+  const st=dutyBase(person,iso);
+  if(!st||st.type==="off")return null;
+  let a=iso,b=iso;
+  for(let i=0;i<10;i++){const p=addDays(a,-1),d=dutyBase(person,p);if(d&&d.type!=="off")a=p;else break;}
+  for(let i=0;i<10;i++){const n=addDays(b,1),d=dutyBase(person,n);if(d&&d.type!=="off")b=n;else break;}
+  return{start:a,end:b,type:st.type};
+}
 function lvDutyTag(person,iso){
-  const st=dutyFor(person,iso);
+  const st=dutyBase(person,iso);
   if(!st)return{t:"",cls:""};
   if(st.type==="off")return{t:"OFF",cls:"off"};
   return{t:(st.type==="early"?"E":"L")+st.day,cls:"work"};
 }
+/* giorni gia' impegnati altrove: servono a vedere nel calendario cosa ho gia' preso */
+function lvTaken(r,skipBlock,skipAdhoc){
+  const m={};
+  (r.blocks||[]).forEach((b,i)=>{
+    if(i===skipBlock)return;
+    if(b.pref&&b.pref.start){let d=b.pref.start;while(d<=b.pref.end){m[d]="b";d=addDays(d,1);}}
+  });
+  (r.adhoc||[]).forEach((a,i)=>{ if(i===skipAdhoc)return; if(a.pref)m[a.pref]="a"; });
+  return m;
+}
 /* disegna il mese: ogni giorno mostra il turno reale della persona */
-function lvCalHTML(r,ym,sel){
+function lvCalHTML(r,ym,sel,taken){
   const y=Number(ym.slice(0,4)),m=Number(ym.slice(5,7));
   const first=new Date(Date.UTC(y,m-1,1));
   const days=new Date(Date.UTC(y,m,0)).getUTCDate();
@@ -1462,6 +1504,7 @@ function lvCalHTML(r,ym,sel){
     const k=inSel(iso);
     const cls=["lvday",tag.cls];
     if(isWinterDay(iso))cls.push("win");
+    if(taken&&taken[iso])cls.push(taken[iso]==="a"?"tka":"tkb");
     if(k===0)cls.push("pref"); else if(k>0)cls.push("sel");
     g+='<button class="'+cls.join(" ")+'" data-d="'+iso+'"><span class="dn">'+d+'</span><span class="dq">'+tag.t+'</span></button>';
   }
@@ -1472,7 +1515,7 @@ function lvCalHTML(r,ym,sel){
    +'<button data-mv="1">›</button></div>'
    +'<div class="lvwd"><span>LUN</span><span>MAR</span><span>MER</span><span>GIO</span><span>VEN</span><span>SAB</span><span>DOM</span></div>'
    +'<div class="lvgrid">'+g+'</div>'
-   +'<div class="lvlegend"><i>🟩 1ª scelta</i><i>🟨 alternative</i><i>OFF = già libero</i><i>bordo azzurro = inverno</i></div>'
+   +'<div class="lvlegend"><i>🟩 1ª scelta</i><i>🟨 alternative</i><i>🟦 già preso</i><i>OFF = già libero</i></div>'
    +'</div>';
 }
 /* pannello unico: calendario + elenco in ordine di priorità */
@@ -1496,7 +1539,7 @@ function lvBlockForm(r,bi){
     const seas=sel.length?(isWinterDay(sel[0].start)?'<span class="lvtag win">inverno</span>':'<span class="lvtag sum">estate</span>'):"";
     mBody.innerHTML='<h3>'+(isNew?"Nuovo blocco":"Blocco "+(bi+1))+' '+seas+'</h3>'
       +'<p class="hint" style="margin-top:6px;text-transform:none;letter-spacing:0">La stagione si capisce dalla data: <b>inverno</b> dal cambio orario di fine ottobre a quello di fine marzo, <b>estate</b> il resto.</p>'
-      +lvCalHTML(r,lvCalM,sel)
+      +lvCalHTML(r,lvCalM,sel,lvTaken(r,isNew?-1:bi,-1))
       +'<label style="margin-top:14px">Scelte in ordine di priorità ('+sel.length+'/'+MAX+')</label>'
       +'<div>'+list+'</div>'
       +'<div class="mrow">'+(isNew?'':'<button class="btn danger" id="lbDel">Elimina</button>')
@@ -1507,13 +1550,15 @@ function lvBlockForm(r,bi){
     mBody.querySelectorAll("[data-mv]").forEach(x=>x.onclick=()=>{
       lvCalM=lvMonthShift(lvCalM,Number(x.dataset.mv));draw();});
     mBody.querySelectorAll("[data-d]").forEach(x=>x.onclick=()=>{
-      const iso=x.dataset.d, end=blockEnd(iso);
-      const hit=sel.findIndex(v=>v.start===iso);
+      const iso=x.dataset.d;
+      const wb=workBlockAt(r.person,iso);           // solo giorni lavorativi
+      if(!wb){alert("Quel giorno sei già OFF: scegli un giorno del blocco di lavoro.");return;}
+      const hit=sel.findIndex(v=>v.start===wb.start);
       if(hit>=0){sel.splice(hit,1);}
       else{
-        if(sel.some(v=>!(end<v.start||iso>v.end))){alert("Si sovrappone a un blocco già scelto.");return;}
+        if(sel.some(v=>!(wb.end<v.start||wb.start>v.end))){alert("Si sovrappone a un blocco già scelto.");return;}
         if(sel.length>=MAX){alert("Massimo "+MAX+" scelte (1 preferenza + "+LV_ALTS+" alternative).");return;}
-        sel.push({start:iso,end:end});
+        sel.push({start:wb.start,end:wb.end});
       }
       draw();
     });
@@ -1545,6 +1590,7 @@ function lvAdhocForm(r,ai){
   if(!lvCalM)lvCalM=(sel[0]?sel[0].slice(0,7):(r.year+"-01"));
   const MAX=1+LV_ALTS;
 
+  const tk=lvTaken(r,-1,isNew?-1:ai);
   const calDay=(ym)=>{
     const y=Number(ym.slice(0,4)),m=Number(ym.slice(5,7));
     const first=new Date(Date.UTC(y,m-1,1));
@@ -1558,6 +1604,7 @@ function lvAdhocForm(r,ai){
       const k=sel.indexOf(iso);
       const cls=["lvday",tag.cls];
       if(isWinterDay(iso))cls.push("win");
+      if(tk[iso])cls.push(tk[iso]==="a"?"tka":"tkb");
       if(k===0)cls.push("pref"); else if(k>0)cls.push("sel");
       g+='<button class="'+cls.join(" ")+'" data-d="'+iso+'"><span class="dn">'+d+'</span><span class="dq">'+tag.t+'</span></button>';
     }
@@ -1566,7 +1613,7 @@ function lvAdhocForm(r,ai){
       +'<span class="mlab">'+MML[m-1]+" "+y+'</span><button data-mv="1">›</button></div>'
       +'<div class="lvwd"><span>LUN</span><span>MAR</span><span>MER</span><span>GIO</span><span>VEN</span><span>SAB</span><span>DOM</span></div>'
       +'<div class="lvgrid">'+g+'</div>'
-      +'<div class="lvlegend"><i>🟩 1ª scelta</i><i>🟨 alternative</i><i>OFF = già libero</i></div></div>';
+      +'<div class="lvlegend"><i>🟩 1ª scelta</i><i>🟨 alternative</i><i>🟦 già preso</i><i>OFF = già libero</i></div></div>';
   };
   const draw=()=>{
     const list=sel.length?sel.map((d,i)=>
