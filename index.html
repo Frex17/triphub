@@ -404,6 +404,14 @@
   .lvfold{width:100%;text-align:left;background:transparent;border:1px solid var(--line-soft);border-radius:12px;
     color:var(--muted);font-family:inherit;font-size:12.5px;font-weight:600;padding:11px 13px;margin-bottom:12px;cursor:pointer}
   .lvfold b{color:var(--ink)}
+  .lvacts{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:14px}
+  .lvacts button{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:13px;
+    padding:13px 8px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;gap:4px;-webkit-tap-highlight-color:transparent}
+  .lvacts button .bi{font-size:19px;line-height:1}
+  .lvacts button small{font-weight:500;font-size:10.5px;color:var(--muted)}
+  .lvacts button:active{transform:scale(.96)}
+  .lvacts button[disabled]{opacity:.4;pointer-events:none}
 </style>
 </head>
 <body>
@@ -1307,7 +1315,12 @@ function renderLeave(keepScroll){
   const needW=lvMinWinter(r), needS=lvMinSummer(r);
   let h="";
 
-  /* ---- riepilogo in cima: cosa ho chiesto e cosa manca ---- */
+  /* ---- gruppo e finestre, in cima e richiudibili ---- */
+  const w0=lvWinDates(r.grp||"C",r.year), st1=lvWindowState(w0.p1);
+  h+='<button class="lvfold" id="lvFold">'+(lvShowWin?"▾":"▸")+' 🏷 Sono nel gruppo <b>'+esc(r.grp||"C")+'</b> · Fase 1 '+esc(st1.txt)+'</button>';
+  if(lvShowWin)h+=lvWindowsHTML(r);
+
+  /* ---- riepilogo ---- */
   const pct=Math.min(100,Math.round(used/Math.max(1,totDays)*100));
   h+='<div class="lvcard">'
    +'<div class="lvbig"><b>'+used+'/'+totDays+'</b><span>giorni scelti</span></div>'
@@ -1320,12 +1333,17 @@ function renderLeave(keepScroll){
    +'<span class="tx">Blocchi estivi</span><span class="ct">'+sum+' / '+needS+(sum>=needS?" ✓":"")+'</span></div>'):"")
    +'<div class="lvreq '+(na>=maxA?"done":"")+'"><span class="ic">📌</span>'
    +'<span class="tx">Giorni ad hoc</span><span class="ct">'+na+' / '+maxA+(na>=maxA?" ✓":"")+'</span></div>'
-   +'<div class="lvreq"><span class="ic">🏷</span><span class="tx">Gruppo di anzianità</span><span class="ct">'+esc(r.grp||"C")+'</span></div>'
+   +'</div>';
+
+  /* ---- i due pulsanti, affiancati ---- */
+  h+='<div class="lvacts">'
+   +'<button id="lvAddBlock"'+(nb>=maxB?" disabled":"")+'><span class="bi">🧱</span>Aggiungi blocco<small>'+nb+'/'+maxB+' · '+LV_BLOCKLEN+' giorni</small></button>'
+   +'<button id="lvAddAdhoc"'+(na>=maxA?" disabled":"")+'><span class="bi">📌</span>Aggiungi giorno<small>'+na+'/'+maxA+' · ad hoc</small></button>'
    +'</div>';
 
   /* ---- elenco di quello che ho gia' scelto ---- */
   const mine=[];
-  (r.blocks||[]).forEach((b,k)=>{ if(b.pref&&b.pref.start)
+  (r.blocks||[]).forEach(b=>{ if(b.pref&&b.pref.start)
     mine.push({d:b.pref.start,txt:(b.type==="winter"?"❄️":"☀️")+" "+fmtRange(b.pref.start,b.pref.end),
                sub:(b.alts||[]).length+" alternative"}); });
   (r.adhoc||[]).forEach(a=>{ if(a.pref)
@@ -1337,11 +1355,6 @@ function renderLeave(keepScroll){
         +'<span style="font-size:11.5px;color:var(--muted)">'+x.sub+'</span></div>').join("")
       +'</div></div>';
   }
-
-  /* ---- finestre: richiudibili ---- */
-  const w0=lvWinDates(r.grp||"C",r.year), st1=lvWindowState(w0.p1);
-  h+='<button class="lvfold" id="lvFold">'+(lvShowWin?"▾":"▸")+' Finestre di candidatura · gruppo <b>'+esc(r.grp||"C")+'</b> — Fase 1 '+esc(st1.txt)+'</button>';
-  if(lvShowWin)h+=lvWindowsHTML(r);
 
   /* blocchi */
   h+='<div class="sect"><div class="sh">🧱 Blocchi<span class="n">'+nb+'/'+maxB+'</span></div><div class="sb">';
@@ -1357,7 +1370,6 @@ function renderLeave(keepScroll){
     });
     h+='</div>';
   });
-  if(nb<maxB)h+='<button class="btn ghost small" id="lvAddBlock">+ Aggiungi blocco</button>';
   h+='</div></div>';
 
   /* ad hoc */
@@ -1373,7 +1385,6 @@ function renderLeave(keepScroll){
     });
     h+='</div>';
   });
-  if(na<maxA)h+='<button class="btn ghost small" id="lvAddAdhoc">+ Aggiungi giorno</button>';
   h+='</div></div>';
 
   /* chi altro ha ferie in quei giorni */
