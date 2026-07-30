@@ -348,12 +348,6 @@
   .lvpick button{flex:0 0 auto;border:1px solid var(--line-soft);background:var(--surface-2);color:var(--muted);
     border-radius:999px;padding:9px 15px;font-size:13.5px;font-weight:700;font-family:inherit;cursor:pointer}
   .lvpick button.on{background:var(--brass);border-color:var(--brass);color:#0c1526}
-  .lvbar{display:flex;gap:8px;flex-wrap:wrap;margin:2px 0 12px}
-  .lvchip{border:1px solid var(--line-soft);border-radius:10px;padding:8px 11px;font-size:12px;color:var(--muted);
-    background:var(--surface-2)}
-  .lvchip b{color:var(--ink);font-size:14px;font-family:"IBM Plex Mono",monospace}
-  .lvchip.warn{border-color:var(--warn);color:var(--warn)}
-  .lvchip.ok{border-color:var(--ok);color:var(--ok)}
   .lvblock{border:1px solid var(--line-soft);border-radius:13px;padding:12px 13px;margin-bottom:10px;background:var(--surface-2)}
   .lvhead{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
   .lvtag{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;
@@ -392,6 +386,24 @@
   .lvday:active{transform:scale(.93)}
   .lvlegend{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;font-size:10.5px;color:var(--muted)}
   .lvlegend i{font-style:normal}
+  /* ---------- riepilogo ferie ---------- */
+  .lvcard{border:1px solid var(--line-soft);border-radius:14px;padding:14px 15px;margin-bottom:12px;background:var(--surface-2)}
+  .lvbig{display:flex;align-items:baseline;gap:8px;margin-bottom:2px}
+  .lvbig b{font-size:26px;font-family:"IBM Plex Mono",monospace;color:var(--brass);line-height:1}
+  .lvbig span{font-size:13px;color:var(--muted)}
+  .lvprog{height:7px;border-radius:4px;background:rgba(255,255,255,.09);overflow:hidden;margin:10px 0 4px}
+  .lvprog i{display:block;height:100%;background:var(--brass);border-radius:4px;transition:width .3s}
+  .lvsub{font-size:11.5px;color:var(--muted)}
+  .lvreq{display:flex;align-items:center;gap:9px;padding:8px 0;border-top:1px solid var(--line-soft);font-size:13.5px}
+  .lvreq:first-of-type{margin-top:8px}
+  .lvreq .ic{font-size:15px;width:20px;text-align:center;flex:0 0 auto}
+  .lvreq .tx{flex:1;min-width:0}
+  .lvreq .ct{font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--muted)}
+  .lvreq.done .ct{color:var(--ok)}
+  .lvreq.miss .ct{color:var(--warn)}
+  .lvfold{width:100%;text-align:left;background:transparent;border:1px solid var(--line-soft);border-radius:12px;
+    color:var(--muted);font-family:inherit;font-size:12.5px;font-weight:600;padding:11px 13px;margin-bottom:12px;cursor:pointer}
+  .lvfold b{color:var(--ink)}
 </style>
 </head>
 <body>
@@ -1173,6 +1185,7 @@ const LKEY="triphub.leave.v1";
 let leave=[];              // [{id,year,person,grp,days,parttime,blocks,adhoc,note,updated_at}]
 let lvYear=(new Date().getFullYear()+1);
 let lvWho="SALIFR";
+let lvShowWin=false;
 const LV_BLOCKS=3, LV_ALTS=5, LV_BLOCKLEN=5;
 /* Regole dalla comunicazione "RYR Connect - Annual Leave - IT" (29 lug 2026):
    Full-time: almeno 2 blocchi invernali E 1 estivo. Il resto come ad hoc.
@@ -1294,26 +1307,41 @@ function renderLeave(keepScroll){
   const needW=lvMinWinter(r), needS=lvMinSummer(r);
   let h="";
 
-  h+=lvWindowsHTML(r);
-
-  /* riepilogo */
-  h+='<div class="lvbar">'
-   +'<div class="lvchip"><b>'+used+'/'+totDays+'</b> giorni</div>'
-   +'<div class="lvchip'+(nb>=maxB?" ok":"")+'"><b>'+nb+'/'+maxB+'</b> blocchi</div>'
-   +'<div class="lvchip'+(win>=needW?" ok":" warn")+'"><b>'+win+'/'+needW+'</b> inverno</div>'
-   +(needS?('<div class="lvchip'+(sum>=needS?" ok":" warn")+'"><b>'+sum+'/'+needS+'</b> estate</div>'):"")
-   +'<div class="lvchip'+(na>=maxA?" ok":"")+'"><b>'+na+'/'+maxA+'</b> ad hoc</div>'
-   +'<div class="lvchip">gruppo <b>'+esc(r.grp||"C")+'</b></div>'
-   +(r.bhol?'<div class="lvchip">+'+LV_BHOL+' B/HOL</div>':"")
+  /* ---- riepilogo in cima: cosa ho chiesto e cosa manca ---- */
+  const pct=Math.min(100,Math.round(used/Math.max(1,totDays)*100));
+  h+='<div class="lvcard">'
+   +'<div class="lvbig"><b>'+used+'/'+totDays+'</b><span>giorni scelti</span></div>'
+   +'<div class="lvprog"><i style="width:'+pct+'%"></i></div>'
+   +'<div class="lvsub">'+(r.parttime?"Part-time":"20 giorni + 2 B/HOL")
+   +(xmas?" · 25 dic lavorativo, −1":" · 25 dic OFF")+'</div>'
+   +'<div class="lvreq '+(win>=needW?"done":"miss")+'"><span class="ic">❄️</span>'
+   +'<span class="tx">Blocchi invernali</span><span class="ct">'+win+' / '+needW+(win>=needW?" ✓":"")+'</span></div>'
+   +(needS?('<div class="lvreq '+(sum>=needS?"done":"miss")+'"><span class="ic">☀️</span>'
+   +'<span class="tx">Blocchi estivi</span><span class="ct">'+sum+' / '+needS+(sum>=needS?" ✓":"")+'</span></div>'):"")
+   +'<div class="lvreq '+(na>=maxA?"done":"")+'"><span class="ic">📌</span>'
+   +'<span class="tx">Giorni ad hoc</span><span class="ct">'+na+' / '+maxA+(na>=maxA?" ✓":"")+'</span></div>'
+   +'<div class="lvreq"><span class="ic">🏷</span><span class="tx">Gruppo di anzianità</span><span class="ct">'+esc(r.grp||"C")+'</span></div>'
    +'</div>';
-  h+='<div class="hint" style="margin:-4px 0 12px">'
-   +(r.parttime?"Part-time":"20 giorni + 2 B/HOL")
-   +(xmas?" · <span style=\"color:var(--warn)\">25 dic lavorativo: −1 giorno</span>":" · 25 dic OFF: nessuna trattenuta")
-   +' → <b>'+totDays+' giorni</b> ('+maxB*LV_BLOCKLEN+' nei blocchi + '+maxA+' ad hoc)</div>';
-  const warn=[];
-  if(nb>0&&win<needW)warn.push("servono almeno "+needW+" blocchi invernali");
-  if(nb>0&&needS&&sum<needS)warn.push("serve almeno "+needS+" blocco estivo");
-  if(warn.length)h+='<div class="hint" style="color:var(--warn);margin-bottom:10px">⚠️ '+esc(warn.join(" · "))+'.</div>';
+
+  /* ---- elenco di quello che ho gia' scelto ---- */
+  const mine=[];
+  (r.blocks||[]).forEach((b,k)=>{ if(b.pref&&b.pref.start)
+    mine.push({d:b.pref.start,txt:(b.type==="winter"?"❄️":"☀️")+" "+fmtRange(b.pref.start,b.pref.end),
+               sub:(b.alts||[]).length+" alternative"}); });
+  (r.adhoc||[]).forEach(a=>{ if(a.pref)
+    mine.push({d:a.pref,txt:"📌 "+pretty(a.pref),sub:(a.alts||[]).length+" alternative"}); });
+  mine.sort((a,b)=>a.d.localeCompare(b.d));
+  if(mine.length){
+    h+='<div class="sect"><div class="sh">🗓 Le mie ferie '+lvYear+'</div><div class="sb">'
+      +mine.map(x=>'<div class="lvrow"><span class="dt">'+x.txt+'</span>'
+        +'<span style="font-size:11.5px;color:var(--muted)">'+x.sub+'</span></div>').join("")
+      +'</div></div>';
+  }
+
+  /* ---- finestre: richiudibili ---- */
+  const w0=lvWinDates(r.grp||"C",r.year), st1=lvWindowState(w0.p1);
+  h+='<button class="lvfold" id="lvFold">'+(lvShowWin?"▾":"▸")+' Finestre di candidatura · gruppo <b>'+esc(r.grp||"C")+'</b> — Fase 1 '+esc(st1.txt)+'</button>';
+  if(lvShowWin)h+=lvWindowsHTML(r);
 
   /* blocchi */
   h+='<div class="sect"><div class="sh">🧱 Blocchi<span class="n">'+nb+'/'+maxB+'</span></div><div class="sb">';
@@ -1355,6 +1383,8 @@ function renderLeave(keepScroll){
   const body=document.getElementById("lvBody");
   body.innerHTML=h;
 
+  const fold=document.getElementById("lvFold");
+  if(fold)fold.onclick=()=>{lvShowWin=!lvShowWin;renderLeave(true);};
   const add=document.getElementById("lvAddBlock");
   if(add)add.onclick=()=>lvBlockForm(r,-1);
   const adda=document.getElementById("lvAddAdhoc");
@@ -1452,10 +1482,9 @@ function lvBlockForm(r,bi){
       +(i>0?'<button class="x" data-up="'+i+'" title="alza">▲</button>':"")
       +'<button class="x" data-rm="'+i+'">✕</button></div>').join("")
       : '<div class="lvempty">Tocca un giorno sul calendario: prende i '+LV_BLOCKLEN+' giorni da lì. Il primo che scegli è la 1ª scelta.</div>';
-    mBody.innerHTML='<h3>'+(isNew?"Nuovo blocco":"Blocco "+(bi+1))+'</h3>'
-      +'<div class="seg" id="lbType" style="margin-top:10px">'
-      +'<button data-t="winter"'+(b.type==="winter"?' class="on"':'')+'>❄️ Inverno</button>'
-      +'<button data-t="summer"'+(b.type==="summer"?' class="on"':'')+'>☀️ Estate</button></div>'
+    const seas=sel.length?(isWinterDay(sel[0].start)?'<span class="lvtag win">inverno</span>':'<span class="lvtag sum">estate</span>'):"";
+    mBody.innerHTML='<h3>'+(isNew?"Nuovo blocco":"Blocco "+(bi+1))+' '+seas+'</h3>'
+      +'<p class="hint" style="margin-top:6px;text-transform:none;letter-spacing:0">La stagione si capisce dalla data: <b>inverno</b> dal cambio orario di fine ottobre a quello di fine marzo, <b>estate</b> il resto.</p>'
       +lvCalHTML(r,lvCalM,sel)
       +'<label style="margin-top:14px">Scelte in ordine di priorità ('+sel.length+'/'+MAX+')</label>'
       +'<div>'+list+'</div>'
@@ -1464,8 +1493,6 @@ function lvBlockForm(r,bi){
     bind();
   };
   const bind=()=>{
-    mBody.querySelectorAll("#lbType button").forEach(x=>x.onclick=()=>{
-      b.type=x.dataset.t;draw();});
     mBody.querySelectorAll("[data-mv]").forEach(x=>x.onclick=()=>{
       lvCalM=lvMonthShift(lvCalM,Number(x.dataset.mv));draw();});
     mBody.querySelectorAll("[data-d]").forEach(x=>x.onclick=()=>{
@@ -1488,6 +1515,7 @@ function lvBlockForm(r,bi){
     mBody.querySelector("#lbSave").onclick=()=>{
       if(!sel.length){alert("Scegli almeno la 1ª scelta toccando un giorno.");return;}
       b.pref={start:sel[0].start,end:sel[0].end};
+      b.type=isWinterDay(sel[0].start)?"winter":"summer";   // dedotta dalla data
       b.alts=sel.slice(1).map(x=>({start:x.start,end:x.end}));
       if(isNew){r.blocks=r.blocks||[];r.blocks.push(b);}
       touchLv(r);closeModal();renderLeave();
