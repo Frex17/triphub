@@ -426,6 +426,12 @@
   .lvline .alt{font-size:11.5px;color:var(--muted);font-family:"IBM Plex Mono",monospace}
   .lvline .go{color:var(--muted);font-size:16px}
   .lvline:active{opacity:.6}
+  /* liste ad hoc su due colonne: sono giorni singoli, occupano meta' spazio */
+  .lvcols{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;margin-top:4px}
+  .lvcols .lvrow{border-top:0;padding:4px 0;gap:6px}
+  .lvcols .lvline{border-top:1px solid var(--line-soft);padding:9px 2px}
+  .lvcols .lvline .alt{font-size:11px}
+  @media (max-width:340px){ .lvcols{grid-template-columns:1fr} }
 </style>
 </head>
 <body>
@@ -1366,9 +1372,10 @@ function renderLeave(keepScroll){
          +'<span style="font-size:11.5px;color:var(--muted)">'+(b.alts||[]).length+' alt.</span></div>').join("");
     }
     if(ma.length){
-      h+='<div class="lvsep">📌 Giorni ad hoc</div>'
+      h+='<div class="lvsep">📌 Giorni ad hoc</div><div class="lvcols">'
        +ma.map(a=>'<div class="lvrow"><span class="dt">'+pretty(a.pref)+'</span>'
-         +'<span style="font-size:11.5px;color:var(--muted)">'+(a.alts||[]).length+' alt.</span></div>').join("");
+         +'<span style="font-size:11px;color:var(--muted)">'+(a.alts||[]).length+' alt.</span></div>').join("")
+       +'</div>';
     }
     h+='</div></div>';
   }
@@ -1392,16 +1399,18 @@ function renderLeave(keepScroll){
   /* ad hoc: elenco compatto, una riga per giorno */
   h+='<div class="sect"><div class="sh">📌 Giorni ad hoc<span class="n">'+na+'/'+maxA+'</span></div><div class="sb">';
   if(!na)h+='<div class="lvempty">Giorni singoli, ognuno con fino a '+LV_ALTS+' alternative.</div>';
-  (r.adhoc||[]).forEach((a,ai)=>{
-    h+='<button class="lvline" data-ea="'+ai+'">'
-      +'<span class="dt">'+(a.pref?pretty(a.pref):"da scegliere")+'</span>'
-      +'<span class="alt">'+((a.alts||[]).length)+' alt.</span>'
-      +'<span class="go">›</span></button>';
-  });
+  else{
+    h+='<div class="lvcols">';
+    (r.adhoc||[]).forEach((a,ai)=>{
+      h+='<button class="lvline" data-ea="'+ai+'">'
+        +'<span class="dt">'+(a.pref?pretty(a.pref):"da scegliere")+'</span>'
+        +'<span class="alt">'+((a.alts||[]).length)+'</span>'
+        +'<span class="go">›</span></button>';
+    });
+    h+='</div>';
+  }
   h+='</div></div>';
 
-  /* chi altro ha ferie in quei giorni */
-  h+=lvOverlapHTML(r);
   h+='<div style="height:84px"></div>';
 
   const body=document.getElementById("lvBody");
@@ -1416,31 +1425,6 @@ function renderLeave(keepScroll){
   body.querySelectorAll("[data-eb]").forEach(b=>b.onclick=()=>lvBlockForm(r,Number(b.dataset.eb)));
   body.querySelectorAll("[data-ea]").forEach(b=>b.onclick=()=>lvAdhocForm(r,Number(b.dataset.ea)));
   if(sc!==null)window.scrollTo(0,sc);
-}
-
-/* sovrapposizioni con le altre: utile per non chiedere tutte gli stessi giorni */
-function lvOverlapHTML(me){
-  const others=leave.filter(x=>x.year===lvYear&&x.person!==me.person&&!x.deleted);
-  if(!others.length)return "";
-  const mine=[];
-  (me.blocks||[]).forEach(b=>{ if(b.pref&&b.pref.start)mine.push([b.pref.start,b.pref.end]); });
-  (me.adhoc||[]).forEach(a=>{ if(a.pref)mine.push([a.pref,a.pref]); });
-  if(!mine.length)return "";
-  const hits=[];
-  others.forEach(o=>{
-    const ranges=[];
-    (o.blocks||[]).forEach(b=>{ if(b.pref&&b.pref.start)ranges.push([b.pref.start,b.pref.end]); });
-    (o.adhoc||[]).forEach(a=>{ if(a.pref)ranges.push([a.pref,a.pref]); });
-    ranges.forEach(rg=>{
-      mine.forEach(mr=>{
-        if(!(rg[1]<mr[0]||rg[0]>mr[1]))hits.push(partLabel(o.person)+" "+fmtRange(rg[0],rg[1]));
-      });
-    });
-  });
-  if(!hits.length)return '<div class="sect"><div class="sh">👥 Le altre</div><div class="sb"><div class="lvempty">Nessuna sovrapposizione con le preferenze delle altre.</div></div></div>';
-  const uniq=hits.filter((x,i)=>hits.indexOf(x)===i);
-  return '<div class="sect"><div class="sh">👥 Le altre<span class="n">'+uniq.length+'</span></div><div class="sb">'
-    +uniq.map(x=>'<div class="lvrow"><span class="dt">🔁 '+esc(x)+'</span></div>').join("")+'</div></div>';
 }
 
 /* ---- moduli ferie ---- */
@@ -1526,7 +1510,9 @@ function lvBlockForm(r,bi){
   let sel=[];
   if(b.pref&&b.pref.start)sel.push({start:b.pref.start,end:b.pref.end});
   (b.alts||[]).forEach(a=>sel.push({start:a.start,end:a.end}));
-  if(!lvCalM)lvCalM=(sel[0]?sel[0].start.slice(0,7):(r.year+"-01"));
+  // in modifica si apre dove sta la scelta; se e' nuovo resta il mese che stavi guardando
+  if(!isNew&&sel[0])lvCalM=sel[0].start.slice(0,7);
+  else if(!lvCalM||lvCalM.slice(0,4)!==String(r.year))lvCalM=r.year+"-01";
   const MAX=1+LV_ALTS;
 
   const draw=()=>{
@@ -1587,7 +1573,8 @@ function lvAdhocForm(r,ai){
   let sel=[];
   if(a.pref)sel.push(a.pref);
   (a.alts||[]).forEach(d=>sel.push(d));
-  if(!lvCalM)lvCalM=(sel[0]?sel[0].slice(0,7):(r.year+"-01"));
+  if(!isNew&&sel[0])lvCalM=sel[0].slice(0,7);
+  else if(!lvCalM||lvCalM.slice(0,4)!==String(r.year))lvCalM=r.year+"-01";
   const MAX=1+LV_ALTS;
 
   const tk=lvTaken(r,-1,isNew?-1:ai);
