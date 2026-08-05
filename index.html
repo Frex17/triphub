@@ -771,10 +771,10 @@ function evOf(r){return{id:r.id,name:r.name||"",place:r.place||"",start:r.start_
   status:r.status==="idea"?"maybe":(r.status||"maybe"),parts:(r.participants!=null&&r.participants!=="")?r.participants.split(","):[],
   note:r.note||"",deleted:!!r.deleted,updated_at:r.updated_at};}
 function lvRow(r){return{id:r.id||lvId(r.year,r.person),year:r.year,person:r.person,grp:r.grp||"C",
-  days:r.days||0,autodays:r.autoDays!==false,parttime:!!r.parttime,bhol:!!r.bhol,blocks:r.blocks||[],adhoc:r.adhoc||[],note:r.note||"",
+  days:r.days||0,autodays:r.autoDays!==false,parttime:!!r.parttime,bhol:!!r.bhol,hired:r.hired||"",blocks:r.blocks||[],adhoc:r.adhoc||[],note:r.note||"",
   deleted:!!r.deleted,updated_at:r.updated_at||new Date().toISOString()};}
 function lvOf(x){return{id:x.id,year:x.year,person:x.person,grp:x.grp||"C",days:x.days||0,autoDays:x.autodays!==false,
-  parttime:!!x.parttime,bhol:!!x.bhol,blocks:x.blocks||[],adhoc:x.adhoc||[],note:x.note||"",
+  parttime:!!x.parttime,bhol:!!x.bhol,hired:x.hired||"",blocks:x.blocks||[],adhoc:x.adhoc||[],note:x.note||"",
   deleted:!!x.deleted,updated_at:x.updated_at};}
 function pushLeave(r){
   if(!sbReady)return;
@@ -1221,6 +1221,19 @@ const LV_BLOCKS=3, LV_ALTS=5, LV_BLOCKLEN=5;
    5+ anni di servizio: 2 giorni festivi (B/HOL) in piu, da chiedere come ad hoc. */
 const LV_GROUPS={SALIFR:"A", NUZZMA:"A", RUSANG:"B", AVILXI:"B"};
 const LV_BHOL=2, LV_BASE_DAYS=20;
+/* I 2 B/HOL spettano a chi ha 5 anni di servizio maturati entro il 1 aprile 2026.
+   Le ragazze non ci rientrano: restano a 20 giorni (5 ad hoc). */
+/* data di assunzione: da qui l'app calcola se i 5 anni sono maturati.
+   Lasciala vuota se non la sai: in quel caso decide l'interruttore manuale. */
+const LV_HIRED={SALIFR:"2015-02-27", NUZZMA:"", RUSANG:"", AVILXI:""};
+/* i 5 anni vanno maturati entro il 1 aprile dell'anno in cui si fa domanda,
+   cioe' l'anno precedente a quello di ferie */
+function lvBholEligible(person,year,hired){
+  const h=hired||LV_HIRED[person]||"";
+  if(!h)return null;                       // data ignota: decide l'interruttore
+  const y=Number(h.slice(0,4))+5;
+  return (y+h.slice(4))<=((year-1)+"-04-01");
+}
 /* Finestre di candidatura per l'anno di ferie: si aprono l'anno precedente.
    [apre, chiude, esito] in formato MM-DD */
 const LV_WINDOWS={
@@ -1242,12 +1255,13 @@ function lvXmasWorking(person,year){
 /* Giorni disponibili: 20 base + 2 B/HOL (automatici con 5+ anni di servizio),
    meno 1 se il 25 dicembre e' lavorativo. Part-time: 10 (9 se Natale lavorativo). */
 function lvAutoDays(r){
-  const base=r.parttime?10:(LV_BASE_DAYS+(r.bhol?LV_BHOL:0));
-  return base-(lvXmasWorking(r.person,r.year)?1:0);
+  return r.parttime?10:(LV_BASE_DAYS+(r.bhol?LV_BHOL:0));
 }
 function lvDays(r){return (r.autoDays===false&&r.days)?r.days:lvAutoDays(r);}
-/* I giorni ad hoc sono quelli che restano dopo i blocchi */
+/* Ad hoc = quelli che restano dopo i blocchi. Se il 25 dicembre e' lavorativo,
+   Ryanair ne assegna uno d'ufficio: resta uno slot in meno da scegliere. */
 function lvMaxAdhoc(r){return Math.max(0,lvDays(r)-lvMaxBlocks(r)*LV_BLOCKLEN);}
+function lvFreeAdhoc(r){return Math.max(0,lvMaxAdhoc(r)-(lvXmasWorking(r.person,r.year)?1:0));}
 
 function saveLv(){try{localStorage.setItem(LKEY,JSON.stringify(leave));}catch(e){}}
 function loadLv(){try{const s=localStorage.getItem(LKEY);if(s){const o=JSON.parse(s);if(Array.isArray(o))leave=o;}}catch(e){}}
@@ -1255,7 +1269,7 @@ function lvId(y,p){return y+"|"+p;}
 function lvRec(y,p,make){
   let r=leave.find(x=>x.year===y&&x.person===p);
   if(!r&&make){
-    r={id:lvId(y,p),year:y,person:p,grp:LV_GROUPS[p]||"C",days:0,autoDays:true,parttime:false,bhol:true,blocks:[],adhoc:[],note:"",
+    r={id:lvId(y,p),year:y,person:p,grp:LV_GROUPS[p]||"C",days:0,autoDays:true,parttime:false,hired:LV_HIRED[p]||"",bhol:(lvBholEligible(p,y)===true),blocks:[],adhoc:[],note:"",
        deleted:false,updated_at:new Date().toISOString()};
     leave.push(r);
   }
@@ -1282,7 +1296,7 @@ function fmtRange(a,b){return pretty(a)+" → "+pretty(b);}
 function lvUsed(r){
   const nb=(r.blocks||[]).filter(b=>b.pref&&b.pref.start).length;
   const na=(r.adhoc||[]).filter(a=>a.pref).length;
-  return nb*LV_BLOCKLEN+na;
+  return nb*LV_BLOCKLEN+na+(lvXmasWorking(r.person,r.year)?1:0);
 }
 function lvWinterCount(r){
   return (r.blocks||[]).filter(b=>b.type==="winter").length;
@@ -1329,7 +1343,7 @@ function renderLeave(keepScroll){
   const used=lvUsed(r), win=lvWinterCount(r);
   const sum=(r.blocks||[]).filter(b=>b.type==="summer").length;
   const nb=(r.blocks||[]).length, na=(r.adhoc||[]).length;
-  const maxB=lvMaxBlocks(r), maxA=lvMaxAdhoc(r);
+  const maxB=lvMaxBlocks(r), maxA=lvMaxAdhoc(r), freeA=lvFreeAdhoc(r);
   const totDays=lvDays(r), xmas=lvXmasWorking(r.person,r.year);
   const needW=lvMinWinter(r), needS=lvMinSummer(r);
   let h="";
@@ -1344,27 +1358,28 @@ function renderLeave(keepScroll){
   h+='<div class="lvcard">'
    +'<div class="lvbig"><b>'+used+'/'+totDays+'</b><span>giorni scelti</span></div>'
    +'<div class="lvprog"><i style="width:'+pct+'%"></i></div>'
-   +'<div class="lvsub">'+(r.parttime?"Part-time":"20 giorni + 2 B/HOL")
-   +(xmas?" · 25 dic lavorativo, −1":" · 25 dic OFF")+'</div>'
+   +'<div class="lvsub">'+(r.parttime?"Part-time":(r.bhol?"20 giorni + 2 B/HOL":"20 giorni"))
+   +(xmas?" · 25 dic lavorativo: 1 ad hoc assegnato d\'ufficio":" · 25 dic OFF")+'</div>'
    +'<div class="lvreq '+(win>=needW?"done":"miss")+'"><span class="ic">❄️</span>'
    +'<span class="tx">Blocchi invernali</span><span class="ct">'+win+' / '+needW+(win>=needW?" ✓":"")+'</span></div>'
    +(needS?('<div class="lvreq '+(sum>=needS?"done":"miss")+'"><span class="ic">☀️</span>'
    +'<span class="tx">Blocchi estivi</span><span class="ct">'+sum+' / '+needS+(sum>=needS?" ✓":"")+'</span></div>'):"")
-   +'<div class="lvreq '+(na>=maxA?"done":"")+'"><span class="ic">📌</span>'
-   +'<span class="tx">Giorni ad hoc</span><span class="ct">'+na+' / '+maxA+(na>=maxA?" ✓":"")+'</span></div>'
+   +'<div class="lvreq '+(na>=freeA?"done":"")+'"><span class="ic">📌</span>'
+   +'<span class="tx">Giorni ad hoc'+(xmas?' <span style="font-size:11px;color:var(--muted)">(+1 il 25 dic)</span>':"")+'</span>'
+   +'<span class="ct">'+na+' / '+freeA+(na>=freeA?" ✓":"")+'</span></div>'
    +'</div>';
 
   /* ---- i due pulsanti, affiancati ---- */
   h+='<div class="lvacts">'
    +'<button id="lvAddBlock"'+(nb>=maxB?" disabled":"")+'><span class="bi">🧱</span>Aggiungi blocco<small>'+nb+'/'+maxB+' · '+LV_BLOCKLEN+' giorni</small></button>'
-   +'<button id="lvAddAdhoc"'+(na>=maxA?" disabled":"")+'><span class="bi">📌</span>Aggiungi giorno<small>'+na+'/'+maxA+' · ad hoc</small></button>'
+   +'<button id="lvAddAdhoc"'+(na>=freeA?" disabled":"")+'><span class="bi">📌</span>Aggiungi giorno<small>'+na+'/'+freeA+' · ad hoc</small></button>'
    +'</div>';
 
   /* ---- elenco: blocchi e ad hoc separati ---- */
   const mb=(r.blocks||[]).filter(b=>b.pref&&b.pref.start)
     .sort((a,b)=>a.pref.start.localeCompare(b.pref.start));
   const ma=(r.adhoc||[]).filter(a=>a.pref).sort((a,b)=>a.pref.localeCompare(b.pref));
-  if(mb.length||ma.length){
+  if(mb.length||ma.length||xmas){
     h+='<div class="sect"><div class="sh">🗓 Le mie ferie '+lvYear+'</div><div class="sb">';
     if(mb.length){
       h+='<div class="lvsep">🧱 Blocchi</div>'
@@ -1375,6 +1390,8 @@ function renderLeave(keepScroll){
       h+='<div class="lvsep">📌 Giorni ad hoc</div><div class="lvcols">'
        +ma.map(a=>'<div class="lvrow"><span class="dt">'+pretty(a.pref)+'</span>'
          +'<span style="font-size:11px;color:var(--muted)">'+(a.alts||[]).length+' alt.</span></div>').join("")
+       +(xmas?'<div class="lvrow"><span class="dt">'+pretty(lvYear+"-12-25")+'</span>'
+         +'<span style="font-size:11px;color:var(--brass)">d\'ufficio</span></div>':"")
        +'</div>';
     }
     h+='</div></div>';
@@ -1397,7 +1414,7 @@ function renderLeave(keepScroll){
   h+='</div></div>';
 
   /* ad hoc: elenco compatto, una riga per giorno */
-  h+='<div class="sect"><div class="sh">📌 Giorni ad hoc<span class="n">'+na+'/'+maxA+'</span></div><div class="sb">';
+  h+='<div class="sect"><div class="sh">📌 Giorni ad hoc<span class="n">'+na+'/'+freeA+'</span></div><div class="sb">';
   if(!na)h+='<div class="lvempty">Giorni singoli, ognuno con fino a '+LV_ALTS+' alternative.</div>';
   else{
     h+='<div class="lvcols">';
@@ -1650,21 +1667,34 @@ function lvSettings(){
     +'<div class="grid2" style="margin-top:12px"><div><label>Giorni totali</label><input type="number" id="lsDays" value="'+lvDays(r)+'" inputmode="numeric"></div>'
     +'<div><label>Part-time</label><div class="seg" id="lsPt">'
     +'<button data-v="0"'+(!r.parttime?' class="on"':'')+'>No</button><button data-v="1"'+(r.parttime?' class="on"':'')+'>Sì</button></div></div></div>'
-    +'<label style="margin-top:12px">5+ anni di servizio (2 B/HOL automatici)</label><div class="seg" id="lsBhol">'
+    +'<label style="margin-top:12px">In compagnia dal</label><input type="date" id="lsHired" value="'+esc(r.hired||"")+'">'
+    +'<div class="hint" id="lsBholInfo" style="margin-top:6px"></div>'
+    +'<label style="margin-top:10px">2 B/HOL (5 anni maturati)</label><div class="seg" id="lsBhol">'
     +'<button data-v="0"'+(!r.bhol?' class="on"':'')+'>No</button><button data-v="1"'+(r.bhol?' class="on"':'')+'>Sì</button></div>'
-    +'<p class="hint" style="margin-top:10px;text-transform:none;letter-spacing:0">Full-time: almeno 2 blocchi invernali e 1 estivo, il resto ad hoc. Part-time: almeno 1 blocco invernale. I 2 B/HOL sono automatici con 5+ anni. Se il 25 dicembre e giorno lavorativo, viene assegnato 1 giorno di ferie e i giorni da scegliere scendono di uno: il calcolo lo fa l app dai turni, ma puoi correggerlo a mano.</p>'
+    +'<p class="hint" style="margin-top:10px;text-transform:none;letter-spacing:0">Full-time: almeno 2 blocchi invernali e 1 estivo, il resto ad hoc. Part-time: almeno 1 blocco invernale. I 2 B/HOL spettano a chi ha maturato 5 anni di servizio entro il 1 aprile 2026. Se il 25 dicembre e giorno lavorativo, Ryanair assegna d ufficio 1 giorno ad hoc: resta uno slot in meno da scegliere. Il calcolo lo fa l app dai turni, ma puoi correggerlo a mano.</p>'
     +'<label style="margin-top:12px">Note</label><textarea id="lsNote" rows="2">'+esc(r.note||"")+'</textarea>'
     +'<div class="mrow"><button class="btn ghost" id="lsCancel">Annulla</button><button class="btn primary" id="lsSave">Salva</button></div>');
   let grp=r.grp||"C", pt=!!r.parttime, bh=!!r.bhol;
   mBody.querySelectorAll("#lsGrp button").forEach(b=>b.onclick=()=>{grp=b.dataset.g;mBody.querySelectorAll("#lsGrp button").forEach(x=>x.classList.toggle("on",x===b));});
   mBody.querySelectorAll("#lsPt button").forEach(b=>b.onclick=()=>{pt=b.dataset.v==="1";mBody.querySelectorAll("#lsPt button").forEach(x=>x.classList.toggle("on",x===b));});
-  mBody.querySelectorAll("#lsBhol button").forEach(b=>b.onclick=()=>{bh=b.dataset.v==="1";mBody.querySelectorAll("#lsBhol button").forEach(x=>x.classList.toggle("on",x===b));});
+  const setBhol=v=>{bh=v;mBody.querySelectorAll("#lsBhol button").forEach(x=>x.classList.toggle("on",(x.dataset.v==="1")===v));};
+  mBody.querySelectorAll("#lsBhol button").forEach(b=>b.onclick=()=>setBhol(b.dataset.v==="1"));
+  const hi=mBody.querySelector("#lsHired"),info=mBody.querySelector("#lsBholInfo");
+  const updHired=()=>{
+    const e=lvBholEligible(lvWho,lvYear,hi.value);
+    if(e===null){info.textContent="Senza data decidi tu con l'interruttore qui sotto.";return;}
+    const y5=(Number(hi.value.slice(0,4))+5)+hi.value.slice(4);
+    info.innerHTML="5 anni maturati il <b>"+pretty(y5)+" "+y5.slice(0,4)+"</b> · "
+      +(e?'<span style="color:var(--ok)">rientri: 2 B/HOL</span>':'<span style="color:var(--warn)">non rientri per il '+lvYear+'</span>');
+    setBhol(e);
+  };
+  hi.onchange=updHired; if(r.hired)updHired();
   mBody.querySelector("#lsCancel").onclick=closeModal;
   mBody.querySelector("#lsSave").onclick=()=>{
     const y=Number(mBody.querySelector("#lsYear").value)||lvYear;
     if(y!==lvYear){lvYear=y;}
     const rr=lvRec(lvYear,lvWho,true);
-    rr.grp=grp;rr.parttime=pt;rr.bhol=bh;
+    rr.grp=grp;rr.parttime=pt;rr.bhol=bh;rr.hired=mBody.querySelector("#lsHired").value||"";
     const dv=Number(mBody.querySelector("#lsDays").value)||0;
     // se il valore combacia con quello calcolato resta automatico, altrimenti lo forzi tu
     rr.days=dv; rr.autoDays=(dv===lvAutoDays(rr));
