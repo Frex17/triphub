@@ -50,11 +50,10 @@
   }
   * { margin:0; padding:0; box-sizing:border-box; }
   html,body { height:100%; }
-  html { background:var(--app-bg-solid); }
+  html { background:var(--app-bg); background-attachment:fixed; }
   body {
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-    background:var(--app-bg);
-    background-attachment:fixed;
+    background:transparent;
     color:var(--ink);
     padding:max(16px,env(safe-area-inset-top)) 16px calc(96px + env(safe-area-inset-bottom));
     -webkit-tap-highlight-color:transparent;
@@ -928,7 +927,10 @@ function show(v){
   }
   // in home non c'è nulla da scorrere: blocca il rimbalzo
   document.documentElement.classList.toggle("nohome-scroll",v==="launcher");
+  // ogni vista va (ri)disegnata quando la apri, anche dalla barra in basso
   if(v==="planner")renderPlannerTrips();
+  if(v==="events")renderEvents(true);
+  if(v==="leave")renderLeave(true);
   window.scrollTo(0,0);
 }
 function switchTab(p){
@@ -1676,8 +1678,16 @@ function lvSettings(){
     +'<div class="mrow"><button class="btn ghost" id="lsCancel">Annulla</button><button class="btn primary" id="lsSave">Salva</button></div>');
   let grp=r.grp||"C", pt=!!r.parttime, bh=!!r.bhol;
   mBody.querySelectorAll("#lsGrp button").forEach(b=>b.onclick=()=>{grp=b.dataset.g;mBody.querySelectorAll("#lsGrp button").forEach(x=>x.classList.toggle("on",x===b));});
-  mBody.querySelectorAll("#lsPt button").forEach(b=>b.onclick=()=>{pt=b.dataset.v==="1";mBody.querySelectorAll("#lsPt button").forEach(x=>x.classList.toggle("on",x===b));});
-  const setBhol=v=>{bh=v;mBody.querySelectorAll("#lsBhol button").forEach(x=>x.classList.toggle("on",(x.dataset.v==="1")===v));};
+  mBody.querySelectorAll("#lsPt button").forEach(b=>b.onclick=()=>{pt=b.dataset.v==="1";mBody.querySelectorAll("#lsPt button").forEach(x=>x.classList.toggle("on",x===b));refreshDays();});
+  daysIn().oninput=()=>{manualDays=true;};
+  // finche' non lo scrivi a mano, il campo giorni segue i parametri
+  let manualDays=false;
+  const daysIn=()=>mBody.querySelector("#lsDays");
+  const refreshDays=()=>{
+    if(manualDays)return;
+    daysIn().value=lvAutoDays({person:lvWho,year:lvYear,bhol:bh,parttime:pt});
+  };
+  const setBhol=v=>{bh=v;mBody.querySelectorAll("#lsBhol button").forEach(x=>x.classList.toggle("on",(x.dataset.v==="1")===v));refreshDays();};
   mBody.querySelectorAll("#lsBhol button").forEach(b=>b.onclick=()=>setBhol(b.dataset.v==="1"));
   const hi=mBody.querySelector("#lsHired"),info=mBody.querySelector("#lsBholInfo");
   const updHired=()=>{
@@ -1695,9 +1705,9 @@ function lvSettings(){
     if(y!==lvYear){lvYear=y;}
     const rr=lvRec(lvYear,lvWho,true);
     rr.grp=grp;rr.parttime=pt;rr.bhol=bh;rr.hired=mBody.querySelector("#lsHired").value||"";
-    const dv=Number(mBody.querySelector("#lsDays").value)||0;
-    // se il valore combacia con quello calcolato resta automatico, altrimenti lo forzi tu
-    rr.days=dv; rr.autoDays=(dv===lvAutoDays(rr));
+    const dv=Number(daysIn().value)||0;
+    rr.days=dv;
+    rr.autoDays=(!manualDays)||(dv===lvAutoDays(rr));   // forzato solo se l'hai scritto tu
     rr.note=mBody.querySelector("#lsNote").value.trim();
     touchLv(rr);closeModal();renderLeave();
   };
