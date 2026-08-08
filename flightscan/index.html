@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#0c1526">
+<meta name="theme-color" content="#16233d">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>FlightScan</title>
@@ -20,7 +20,7 @@
     --rb-rischio-bg:#fbe6e3; --rb-rischio-fg:#c0463c;
     --shadow:0 1px 2px rgba(20,32,46,.05), 0 10px 26px rgba(20,32,46,.08);
     --bar:#a97f2e;
-    --app-bg:radial-gradient(120% 80% at 50% -10%, #ffffff 0%, #eef2f8 55%, #e6ebf3 100%);
+    --app-bg:linear-gradient(180deg, #ffffff 0%, #eef2f8 55%, #e6ebf3 100%);
     --app-bg-solid:#e6ebf3;
     --app-top:#ffffff;
     --glass:rgba(255,255,255,.6); --glass-brd:rgba(20,30,50,.12);
@@ -33,7 +33,7 @@
     --rb-rischio-bg:#3a2024; --rb-rischio-fg:#ff9a94;
     --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 26px rgba(0,0,0,.45);
     --bar:#c6a35a;
-    --app-bg:radial-gradient(120% 80% at 50% -10%, #16233d 0%, #0c1526 55%, #0a0f1c 100%);
+    --app-bg:linear-gradient(180deg, #16233d 0%, #0c1526 55%, #0a0f1c 100%);
     --app-bg-solid:#0a0f1c;
     --app-top:#16233d;
     --glass:rgba(18,28,48,.55); --glass-brd:rgba(255,255,255,.14);
@@ -411,7 +411,7 @@ function applyThemeFS(){
   var p=_fsPref();
   var t=p==="auto"?(_fsSysDark()?"dark":"light"):p;
   document.documentElement.setAttribute("data-theme",t);
-  var mc=document.querySelector('meta[name="theme-color"]'); if(mc) mc.setAttribute("content",t==="dark"?"#0c1526":"#e6ebf3");
+  var mc=document.querySelector('meta[name="theme-color"]'); if(mc) mc.setAttribute("content",t==="dark"?"#16233d":"#ffffff");
 }
 function setTheme(t){ try{localStorage.setItem("fs.theme",t);}catch(e){} applyThemeFS();
 
