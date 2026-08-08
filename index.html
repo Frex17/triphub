@@ -27,6 +27,7 @@
     --radius:16px;
     --app-bg:radial-gradient(120% 80% at 50% -10%, #16233d 0%, #0c1526 55%, #0a0f1c 100%);
     --app-bg-solid:#0a0f1c;
+    --app-top:#16233d;
     --glass:rgba(18,28,48,.55); --glass-brd:rgba(255,255,255,.14);
     --surface:linear-gradient(160deg, var(--navy-3), var(--navy-2));
     --surface-2:linear-gradient(160deg, var(--navy-2), rgba(17,28,48,.55));
@@ -43,6 +44,7 @@
     --danger:#c0463c; --danger-bg:#fbe6e3;
     --app-bg:radial-gradient(120% 80% at 50% -10%, #ffffff 0%, #eef2f8 55%, #e6ebf3 100%);
     --app-bg-solid:#e6ebf3;
+    --app-top:#ffffff;
     --glass:rgba(255,255,255,.6); --glass-brd:rgba(20,30,50,.12);
     --surface:#ffffff;
     --surface-2:#ffffff;
@@ -50,10 +52,11 @@
   }
   * { margin:0; padding:0; box-sizing:border-box; }
   html,body { height:100%; }
-  html { background:var(--app-bg); background-attachment:fixed; }
+  html { background-color:var(--app-top); }
   body {
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-    background:transparent;
+    background:var(--app-bg);
+    background-attachment:fixed;
     color:var(--ink);
     padding:max(16px,env(safe-area-inset-top)) 16px calc(96px + env(safe-area-inset-bottom));
     -webkit-tap-highlight-color:transparent;
@@ -1227,7 +1230,7 @@ const LV_BHOL=2, LV_BASE_DAYS=20;
    Le ragazze non ci rientrano: restano a 20 giorni (5 ad hoc). */
 /* data di assunzione: da qui l'app calcola se i 5 anni sono maturati.
    Lasciala vuota se non la sai: in quel caso decide l'interruttore manuale. */
-const LV_HIRED={SALIFR:"2015-02-27", NUZZMA:"", RUSANG:"", AVILXI:""};
+const LV_HIRED={SALIFR:"2015-02-27", NUZZMA:"2021-06-01", RUSANG:"2021-06-01", AVILXI:"2021-06-01"};
 /* i 5 anni vanno maturati entro il 1 aprile dell'anno in cui si fa domanda,
    cioe' l'anno precedente a quello di ferie */
 function lvBholEligible(person,year,hired){
@@ -1677,10 +1680,7 @@ function lvSettings(){
     +'<label style="margin-top:12px">Note</label><textarea id="lsNote" rows="2">'+esc(r.note||"")+'</textarea>'
     +'<div class="mrow"><button class="btn ghost" id="lsCancel">Annulla</button><button class="btn primary" id="lsSave">Salva</button></div>');
   let grp=r.grp||"C", pt=!!r.parttime, bh=!!r.bhol;
-  mBody.querySelectorAll("#lsGrp button").forEach(b=>b.onclick=()=>{grp=b.dataset.g;mBody.querySelectorAll("#lsGrp button").forEach(x=>x.classList.toggle("on",x===b));});
-  mBody.querySelectorAll("#lsPt button").forEach(b=>b.onclick=()=>{pt=b.dataset.v==="1";mBody.querySelectorAll("#lsPt button").forEach(x=>x.classList.toggle("on",x===b));refreshDays();});
-  daysIn().oninput=()=>{manualDays=true;};
-  // finche' non lo scrivi a mano, il campo giorni segue i parametri
+  // dichiarazioni PRIMA di collegare i pulsanti, altrimenti il codice si interrompe
   let manualDays=false;
   const daysIn=()=>mBody.querySelector("#lsDays");
   const refreshDays=()=>{
@@ -1688,7 +1688,10 @@ function lvSettings(){
     daysIn().value=lvAutoDays({person:lvWho,year:lvYear,bhol:bh,parttime:pt});
   };
   const setBhol=v=>{bh=v;mBody.querySelectorAll("#lsBhol button").forEach(x=>x.classList.toggle("on",(x.dataset.v==="1")===v));refreshDays();};
+  mBody.querySelectorAll("#lsGrp button").forEach(b=>b.onclick=()=>{grp=b.dataset.g;mBody.querySelectorAll("#lsGrp button").forEach(x=>x.classList.toggle("on",x===b));});
+  mBody.querySelectorAll("#lsPt button").forEach(b=>b.onclick=()=>{pt=b.dataset.v==="1";mBody.querySelectorAll("#lsPt button").forEach(x=>x.classList.toggle("on",x===b));refreshDays();});
   mBody.querySelectorAll("#lsBhol button").forEach(b=>b.onclick=()=>setBhol(b.dataset.v==="1"));
+  daysIn().oninput=()=>{manualDays=true;};
   const hi=mBody.querySelector("#lsHired"),info=mBody.querySelector("#lsBholInfo");
   const updHired=()=>{
     const e=lvBholEligible(lvWho,lvYear,hi.value);
