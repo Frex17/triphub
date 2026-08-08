@@ -26,7 +26,8 @@
   }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0;overflow-x:hidden}
-  body{font-family:"IBM Plex Sans",system-ui,-apple-system,sans-serif;color:var(--ink);background:var(--paper);-webkit-text-size-adjust:100%;line-height:1.45}
+  html{-webkit-text-size-adjust:100%}
+  body{font-family:"IBM Plex Sans",system-ui,-apple-system,sans-serif;color:var(--ink);background:var(--paper);line-height:1.45}
   .cond{font-family:"Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.04em}
 
   header.top{
@@ -1452,6 +1453,10 @@ function applyTheme(){
   const p=_pref();
   const t=p==="auto"?(_sysDark()?"dark":"light"):p;
   document.body.classList.toggle("dark",t==="dark");
+  const bg=getComputedStyle(document.body).getPropertyValue("--paper").trim();
+  document.documentElement.style.background=bg||"";
+  const mc=document.querySelector('meta[name="theme-color"]');
+  if(mc&&bg)mc.setAttribute("content",bg);
   document.querySelectorAll("#themeSeg button").forEach(b=>b.classList.toggle("on",b.dataset.theme===p));
 }
 function setTheme(t){try{localStorage.setItem(TKEY,t);}catch(e){}applyTheme();}
@@ -1533,6 +1538,7 @@ init();
   <a href="/?go=events"><span class="ai">🎟️</span>Eventi</a>
   <span class="on"><span class="ai">🔄</span>Swap</span>
   <a href="/flightscan/"><span class="ai">✈️</span>Voli</a>
+  <a href="/?go=leave"><span class="ai">🌴</span>Ferie</a>
 </nav>
 
 <script>
