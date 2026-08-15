@@ -479,6 +479,19 @@ function pickMetro(field, gi){ var m=DROPCTX[field] && DROPCTX[field].metros[gi]
 function clearField(field){ SEL[field]=null; el("f-"+field).value=""; el("clear-"+field).style.display="none"; el("drop-"+field).classList.remove("open"); el("drop-"+field).innerHTML=""; updateRecap(); }
 
 // ---- recap ----
+/* ordine sensato nel riepilogo: prima andata poi ritorno,
+   dentro ciascuna prima i diretti, poi per orario di partenza */
+function savedSorted(){
+  return SAVED.slice().sort(function(a,b){
+    var da=(a.key.indexOf("rit_")===0)?1:0, db=(b.key.indexOf("rit_")===0)?1:0;
+    if(da!==db)return da-db;
+    var ta=(a.opt.type==="direct")?0:1, tb=(b.opt.type==="direct")?0:1;
+    if(ta!==tb)return ta-tb;
+    var pa=(a.opt.legs[0].dep||""), pb=(b.opt.legs[0].dep||"");
+    if(pa!==pb)return pa<pb?-1:1;
+    return (a.opt.totalMin||0)-(b.opt.totalMin||0);
+  });
+}
 function savedCard(s){ var o=s.opt, a=o.legs[0], b=o.legs[o.legs.length-1]; var dirTag=(s.key.indexOf("rit_")===0)?"ritorno":"andata"; var typ=(o.type==="direct")?("Diretto \u00B7 "+a.fn):("1 scalo via "+esc(o.via)); return '<div class="rcflight"><div class="rcf-main"><div class="rcf-top"><span class="rcf-tag">'+dirTag+'</span><span class="rcf-route">'+a.from+' \u2192 '+b.to+'</span></div><div class="rcf-sub">'+typ+' \u00B7 '+o.totalLabel+'</div><div class="rcf-sub">'+a.dep+' \u2192 '+b.arr+'</div></div><span class="x" onclick="removeSaved(\''+s.key+'\')">&#10005;</span></div>'; }
 function updateRecap(){
   var panelOpen=el("searchPanel") && el("searchPanel").style.display!=="none";
@@ -489,7 +502,7 @@ function updateRecap(){
   el("rcFrom").innerHTML=SEL.from ? '<span class="rcbadge">'+esc(SEL.from.label)+'</span>' : '<span class="rcempty">da scegliere</span>';
   el("rcTo").innerHTML=SEL.to ? '<span class="rcbadge">'+esc(SEL.to.label)+'</span>' : '<span class="rcempty">da scegliere</span>';
   var srow=el("rcSavedRow");
-  if(SAVED.length){ srow.style.display=""; el("rcSaved").innerHTML=SAVED.map(function(s){ return savedCard(s); }).join(""); }
+  if(SAVED.length){ srow.style.display=""; el("rcSaved").innerHTML=savedSorted().map(function(s){ return savedCard(s); }).join(""); }
   else { srow.style.display="none"; el("rcSaved").innerHTML=""; }
   var pax=el("f-pax").value, d1=el("f-d1").value, d2=el("f-d2").value;
   var bits=[];
@@ -565,7 +578,7 @@ function renderTripsList(rows){
 }
 
 function currentTrip(){
-  var fl=SAVED.map(function(s){ var o=s.opt,a=o.legs[0],b=o.legs[o.legs.length-1]; return {key:s.key, dir:(s.key.indexOf("rit_")===0?"rit":"and"), type:o.type, via:o.via||"", from:a.from, to:b.to, dep:a.dep, arr:b.arr, total:o.totalLabel, fn:a.fn||""}; });
+  var fl=savedSorted().map(function(s){ var o=s.opt,a=o.legs[0],b=o.legs[o.legs.length-1]; return {key:s.key, dir:(s.key.indexOf("rit_")===0?"rit":"and"), type:o.type, via:o.via||"", from:a.from, to:b.to, dep:a.dep, arr:b.arr, total:o.totalLabel, fn:a.fn||""}; });
   var nm=IMPORT_EVENT || ((SEL.from?SEL.from.codes[0]:"?")+" \u2192 "+(SEL.to?SEL.to.codes[0]:"?"));
   return { id: TRIP_ID || ("tr_"+Date.now()), name: nm,
     from_label: SEL.from?SEL.from.label:"", from_codes: SEL.from?SEL.from.codes.join(","):"",
