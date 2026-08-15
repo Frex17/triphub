@@ -1216,10 +1216,15 @@ function pendingItems(){
   out.sort((a,b)=>a.d<b.d?-1:a.d>b.d?1:0);
   return out;
 }
+/* giorni del gruppo in cui NESSUN partecipante lavora: niente da chiedere,
+   vanno solo segnati come gia' liberi nel resoconto */
+function freeDays(){
+  return eventDays().filter(d=>!workersOn(d).some(w=>isWork(w.st)));
+}
 function renderRecap(){
-  const done=doneItems(),pend=pendingItems();
+  const done=doneItems(),pend=pendingItems(),free=freeDays();
   const box=document.getElementById("recap");
-  if(!done.length&&!pend.length){box.style.display="none";box.innerHTML="";pushRecapSnapshot(done,pend);return;}
+  if(!done.length&&!pend.length&&!free.length){box.style.display="none";box.innerHTML="";pushRecapSnapshot(done,pend);return;}
   box.style.display="block";
   box.style.borderLeftColor=pend.length?"var(--amber)":"var(--green)";
   const map={AL:["al","A/L"],VTO:["vto","VTO"],SKIP:["skip","Non serve"]};
@@ -1252,6 +1257,11 @@ function renderRecap(){
   let h=`<div class="rtitle">Resoconto</div>`;
   h+=section("pend","⏳ In attesa",pend.length,byDay(pend),pendRow);
   h+=section("done","✓ Presi",done.length,byDay(done),doneRow);
+  if(free.length){
+    h+=`<div class="rsec done"><div class="rsec-h"><span>🌙 Gi&agrave; OFF</span><span class="rsec-n">${free.length}</span></div>`
+      +`<div class="rsec-b"><div class="rday"><span class="rday-h" style="font-weight:400">`
+      +free.map(d=>weekday(d)+" "+pretty(d)).join(" &#183; ")+`</span></div></div></div>`;
+  }
   box.innerHTML=h;
   box.querySelectorAll("[data-ract]").forEach(b=>b.onclick=()=>{
     const a=b.dataset.ract;
@@ -1327,7 +1337,11 @@ function renderPlan(){
         wr.innerHTML=`<div class="rsolved">✓ ${w.f.name||w.f.code} — già preso, esclusi qui sotto</div>`+workerEntryHTML(w,d,shared);
         body.appendChild(wr);
       });
-      if(!unres.length&&!resolved.length)body.insertAdjacentHTML("beforeend",`<div class="free">✓ niente da fare</div>`);
+      // se nessuno del gruppo lavora quel giorno non serve la scheda: sta nel resoconto come "gia OFF"
+      if(!unres.length&&!resolved.length){
+        if(!workersOn(d).some(w=>isWork(w.st))&&state.ui.day==="all")return;
+        body.insertAdjacentHTML("beforeend",`<div class="free">✓ niente da fare</div>`);
+      }
       if(shared.size&&unres.length>1)
         body.insertAdjacentHTML("beforeend",`<div class="clashnote">⚠ Roster ${[...shared].sort((a,b)=>a-b).join(", ")} contesi — dividetevi</div>`);
       el.appendChild(body);box.appendChild(el);
