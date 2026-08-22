@@ -873,6 +873,54 @@ async function initSupabase(){
       }).subscribe();
   }catch(e){console.warn("Sync non attiva:",e);setSync(false);}
 }
+/* legge lo snapshot che Swap Planner scrive in swap_recap e lo aggancia al viaggio */
+async function swapImport(t){
+  const box=document.getElementById("swapRecap");
+  const btn=document.getElementById("btnImpSwap");
+  if(!sbReady){if(box)box.innerHTML='<div class="hint">Sync non attiva: riprova tra qualche secondo.</div>';return;}
+  if(btn)btn.textContent="Carico…";
+  try{
+    const res=await sb.from("swap_recap").select("*");
+    if(res.error)throw res.error;
+    const all=res.data||[];
+    const snap=all.find(e=>snapMatchesTrip(e,t));
+    if(!snap){
+      if(box)box.innerHTML='<div class="hint">Nessun gruppo su Swap Planner combacia con questo viaggio. Aprilo su Swap Planner (stesso nome o stesse date) cosi il riepilogo viene generato, poi riprova.</div>';
+      if(btn)btn.textContent="⬇️ Importa riepilogo da Swap Planner";
+      return;
+    }
+    t.swapSnap=snap;touch(t);
+    renderSwapRecap(snap);
+    renderRecap(t);
+  }catch(e){
+    if(box)box.innerHTML='<div class="hint">Non riesco a leggere il riepilogo: '+esc(String((e&&e.message)||e))+'</div>';
+  }
+  if(btn)btn.textContent="↻ Aggiorna da Swap Planner";
+}
+function shortNm(s){return String(s||"").split(" ")[0];}
+function renderSwapRecap(snap){
+  const box=document.getElementById("swapRecap");if(!box)return;
+  if(!snap){box.innerHTML="";return;}
+  const kindLbl={swap:"↔ swap",pending:"⏳ in attesa","A/L":"A/L",VTO:"VTO","non serve":"non serve",leave:"off"};
+  const row=r=>{
+    const day=r.day?pretty(r.day):"";
+    const by=r.by?(' <span style="color:var(--muted)">← '+esc(shortNm(r.by))+'</span>'):"";
+    const st=kindLbl[r.kind]||"✓ preso";
+    return '<div style="display:flex;justify-content:space-between;gap:8px;font-size:12.5px;padding:5px 0;border-top:1px solid var(--line-soft)">'
+      +'<span><b>'+esc(shortNm(r.who))+'</b>'+by+' <span style="color:var(--muted)">'+esc(day)+'</span></span>'
+      +'<span style="color:var(--brass);font-family:\'IBM Plex Mono\',monospace;white-space:nowrap">'+esc(st)+'</span></div>';
+  };
+  const pend=snap.pending||[], done=snap.done||[];
+  let h='<div style="border:1px solid var(--line-soft);border-radius:12px;padding:12px 14px;background:rgba(255,255,255,.03)">';
+  h+='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:var(--brass);letter-spacing:.14em;text-transform:uppercase;margin-bottom:6px">Resoconto · '+esc(snap.name||"")+'</div>';
+  if(snap.all_off)h+='<div style="color:var(--ok);font-weight:700;font-size:13.5px">✅ Tutti sistemati: nessun turno da coprire.</div>';
+  else if(!pend.length&&!done.length)h+='<div class="hint">Nessun cambio registrato su Swap Planner per questo gruppo.</div>';
+  if(pend.length)h+='<div style="font-size:11px;color:var(--warn);font-weight:700;margin:8px 0 0">⏳ IN ATTESA · '+pend.length+'</div>'+pend.map(row).join("");
+  if(done.length)h+='<div style="font-size:11px;color:var(--ok);font-weight:700;margin:10px 0 0">✓ PRESI · '+done.length+'</div>'+done.map(row).join("");
+  h+='</div>';
+  if(snap.updated_at)h+='<div class="hint" style="margin-top:8px;font-size:11px">🔄 Si aggiorna da solo · ultimo: '+esc(String(snap.updated_at).slice(0,16).replace("T"," "))+'</div>';
+  box.innerHTML=h;
+}
 function snapMatchesTrip(snap,t){
   const norm=s=>String(s||"").toLowerCase().replace(/\s+/g,"");
   if(norm(snap.name)===norm(t.name))return true;
@@ -1717,6 +1765,102 @@ function lvSettings(){
 }
 
 /* ================= prenotazione alloggio ================= */
+/* Riepilogo del viaggio: mezzi, alloggio, prenotazione, stato turni */
+function renderRecap(t){
+  const box=document.getElementById("recapBox");if(!box)return;
+  const b=budgetOf(t), nP=b.nP, lod=t.lodging||{}, bud=b.bud;
+  const icons={flight:"\u2708\uFE0F",train:"\uD83D\uDE86",bus:"\uD83D\uDE8C",car:"\uD83D\uDE97"};
+  let html="";
+  const trs=(t.transports||[]);
+  if(trs.length){
+    html+=trs.map(x=>'<div style="font-size:13.5px;padding:5px 0">'+(icons[x.type]||"\uD83E\uDDED")+" "+esc(x.from||"?")+" \u2192 "+esc(x.to||"?")
+      +" \u00B7 "+pretty(x.date)+(x.time?(" "+esc(x.time)):"")+(x.note?(" \u00B7 "+esc(x.note)):"")+'</div>').join("");
+  }else{
+    html+='<div class="hint">Nessuno spostamento ancora.</div>';
+  }
+  let lodLine;
+  if(lod.mode==="night")lodLine="\uD83C\uDF19 Notte fuori \u2014 0 \u20AC";
+  else{
+    const dove=(lod.zone||"").trim()||t.loc||"da definire";
+    lodLine="\uD83D\uDECF "+esc(dove)+" \u2014 "+(bud>0?("budget "+eur(bud)):"da definire");
+  }
+  html+='<div style="border-top:1px solid var(--line-soft);margin-top:6px;padding-top:8px;font-size:13.5px">'+lodLine+'</div>';
+  const bk=(t.lodging&&t.lodging.booking)||null;
+  if(bk){
+    const p=bkProvider(bk.url);
+    html+='<div style="font-size:13px;margin-top:6px">'+p.i+' <b>'+esc(bk.name||"Prenotato")+'</b>'
+      +(num(bk.total)>0?(" \u00B7 "+eur(num(bk.total))):"")
+      +(bk.url?(' \u00B7 <a href="'+esc(bk.url)+'" target="_blank" rel="noopener" style="color:var(--brass)">apri</a>'):"")
+      +'</div>';
+  }
+  const tot=(lod.mode==="night")?0:bud;
+  if(tot>0){
+    html+='<div class="recap-tot"><b>Alloggio previsto</b><b>'+eur(tot)+'</b></div>'
+      +'<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-top:2px"><span>A testa ('+nP+' pers.)</span><b>'+eur(tot/nP)+'</b></div>';
+  }
+  const days2=eventDays(t);
+  const crewP=(t.parts||[]).filter(p=>CREW_DB[p]&&!CREW_DB[p].noDuty);
+  if(t.swapSnap){
+    const snap=t.swapSnap;
+    let line,col;
+    if(snap.all_off){line="\u2705 Sono tutti OFF (sistemati su Swap Planner)";col="var(--ok)";}
+    else{
+      const w=(snap.workers||[]).map(x=>shortNm(x.name)+" "+(x.days||[]).map(pretty).join(", "));
+      const nPend=(snap.pending||[]).length;
+      line=(w.length?("\u26A0\uFE0F Tutti OFF tranne: "+w.join(" \u00B7 ")):"Da sistemare")+(nPend?(" \u00B7 \u23F3 "+nPend+" in attesa"):"");
+      col="var(--warn)";
+    }
+    html+='<div style="border-top:1px solid var(--line-soft);margin-top:6px;padding-top:8px;font-size:13px;color:'+col+'">'+esc(line)+'</div>';
+  }else if(crewP.length&&days2.length){
+    const workers=[];
+    crewP.forEach(p=>{
+      const wd=days2.filter(d=>{const st=dutyFor(p,d);return st&&st.type!=="off";});
+      if(wd.length)workers.push(partLabel(p)+" "+wd.map(pretty).join(", "));
+    });
+    const line=workers.length?("\u26A0\uFE0F Tutti OFF tranne: "+workers.join(" \u00B7 ")):"\u2705 Sono tutti OFF nei giorni del viaggio";
+    html+='<div style="border-top:1px solid var(--line-soft);margin-top:6px;padding-top:8px;font-size:13px;color:'
+      +(workers.length?"var(--warn)":"var(--ok)")+'">'+esc(line)+'</div>';
+  }
+  box.innerHTML=html;
+}
+/* Alloggio: calcolo budget e link ai siti gia filtrati */
+function renderLodCalc(t){
+  const lod=t.lodging||{},calc=document.getElementById("lodCalc"),links=document.getElementById("lodLinks");
+  if(!calc||!links)return;
+  links.className="provs";
+  const zone=(lod.zone||"").trim();
+  const q=encodeURIComponent(((zone?zone+" ":"")+(t.loc||"")).trim());
+  if(lod.mode==="night"){
+    calc.innerHTML="";
+    links.innerHTML='<a class="prov hi wide" href="/flightscan/"><span class="pv-ic">\u2708\uFE0F</span><span class="pv-tx">FlightScan<small>primo volo del mattino</small></span></a>';
+    return;
+  }
+  const nP=Math.max(1,(t.parts||[]).length);
+  const nights=num(lod.nights)>0?num(lod.nights):Math.max(1,(t.start&&t.end)?daysBetween(t.start,t.end):1);
+  const ppn=num(lod.ppn);
+  const bk="https://www.booking.com/searchresults.it.html?ss="+q+"&checkin="+t.start+"&checkout="+t.end+"&group_adults="+nP;
+  const ab="https://www.airbnb.it/s/"+q+"/homes?checkin="+t.start+"&checkout="+t.end+"&adults="+nP;
+  const tc="https://www.trip.com/hotels/list?city=&checkin="+t.start+"&checkout="+t.end+"&keyword="+q;
+  if(ppn>0){
+    const perNight=ppn*nP, budTot=ppn*nP*nights;
+    let fascia,col;
+    if(ppn<15){fascia="stretta \u00B7 ostelli";col="var(--warn)";}
+    else if(ppn<30){fascia="ostelli e appartamenti";col="var(--ok)";}
+    else if(ppn<60){fascia="hotel semplici";col="var(--ok)";}
+    else {fascia="hotel comodi";col="var(--ok)";}
+    calc.innerHTML='<b style="color:var(--brass)">'+eur(budTot)+'</b> totali \u00B7 '+eur(perNight)+'/notte gruppo \u00B7 <span style="color:'+col+'">'+fascia+'</span>';
+    links.innerHTML=
+      '<a class="prov hi" href="'+bk+'&nflt=price%253DEUR-1-'+Math.ceil(perNight)+'-1" target="_blank" rel="noopener"><span class="pv-ic">\uD83C\uDFE8</span><span class="pv-tx">Booking<small>\u2264 '+eur(Math.ceil(perNight))+'/notte</small></span></a>'
+      +'<a class="prov" href="'+ab+'&price_max='+Math.ceil(budTot)+'" target="_blank" rel="noopener"><span class="pv-ic">\uD83C\uDFE0</span><span class="pv-tx">Airbnb<small>\u2264 '+eur(Math.ceil(budTot))+' tot</small></span></a>'
+      +'<a class="prov wide" href="'+tc+'" target="_blank" rel="noopener"><span class="pv-ic">\uD83C\uDF0F</span><span class="pv-tx">Trip.com<small>hotel</small></span></a>';
+  }else{
+    calc.innerHTML="Metti quanto volete spendere a testa a notte per il totale e la ricerca filtrata.";
+    links.innerHTML=
+      '<a class="prov hi" href="'+bk+'" target="_blank" rel="noopener"><span class="pv-ic">\uD83C\uDFE8</span><span class="pv-tx">Booking<small>'+nP+' persone</small></span></a>'
+      +'<a class="prov" href="'+ab+'" target="_blank" rel="noopener"><span class="pv-ic">\uD83C\uDFE0</span><span class="pv-tx">Airbnb<small>appartamenti</small></span></a>'
+      +'<a class="prov wide" href="'+tc+'" target="_blank" rel="noopener"><span class="pv-ic">\uD83C\uDF0F</span><span class="pv-tx">Trip.com<small>hotel</small></span></a>';
+  }
+}
 function bookingOf(t){ if(!t.lodging)t.lodging={}; return t.lodging.booking||null; }
 function bkProvider(url){
   const u=String(url||"").toLowerCase();
@@ -2008,13 +2152,17 @@ function bookingForm(t,pre,rawTxt){
 async function fsImport(t){
   if(!sbReady){openModal('<h3>Importa da FlightScan</h3><p class="hint" style="margin-top:8px">Sync non attiva al momento: riprova tra qualche secondo.</p><div class="mrow"><button class="btn ghost" id="iCancel">Chiudi</button></div>');mBody.querySelector("#iCancel").onclick=closeModal;return;}
   openModal('<h3>Importa da FlightScan</h3><p class="hint" style="margin-top:8px">Carico i viaggi salvati…</p>');
-  let rows=[];
+  let rows=[],err=null;
   try{
     const res=await sb.from("flightscan_trips").select("*").eq("deleted",false).order("updated_at",{ascending:false}).limit(20);
+    if(res.error)err=res.error;              // non nascondere l'errore: serve a capire cosa non va
     rows=res.data||[];
-  }catch(e){}
-  if(!rows.length){
-    mBody.innerHTML='<h3>Importa da FlightScan</h3><p class="hint" style="margin-top:8px">Nessun viaggio salvato in FlightScan. Cerca i voli lì, tocca ★ Salva, poi torna qui.</p><div class="mrow"><button class="btn ghost" id="iCancel">Chiudi</button></div>';
+  }catch(e){err=e;}
+  if(err||!rows.length){
+    const msg=err
+      ? ("Errore leggendo i viaggi: "+esc(String(err.message||err))+"<br><br>Se dice che la tabella non esiste o e negato l accesso, esegui la migrazione SQL su Supabase.")
+      : "Nessun viaggio salvato in FlightScan. Cerca i voli li, tocca ★ Salva, poi torna qui.";
+    mBody.innerHTML='<h3>Importa da FlightScan</h3><p class="hint" style="margin-top:8px">'+msg+'</p><div class="mrow"><button class="btn ghost" id="iCancel">Chiudi</button></div>';
     mBody.querySelector("#iCancel").onclick=closeModal;return;
   }
   mBody.innerHTML='<h3>Importa da FlightScan</h3><p class="hint" style="margin-top:6px">Scegli il viaggio salvato: i suoi voli finiscono nei Mezzi.</p>'
