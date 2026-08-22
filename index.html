@@ -1206,7 +1206,7 @@ function renderTrip(resetTab){
   const icons={flight:"✈️",train:"🚆",bus:"🚌",car:"🚗"};
   document.getElementById("trList").innerHTML=(t.transports||[]).map(x=>
     '<div class="row"><div class="ic">'+(icons[x.type]||"🧭")+'</div>'
-    +'<div class="rx"><b>'+esc(x.from||"?")+' → '+esc(x.to||"?")+'</b>'
+    +'<div class="rx" data-edit="'+x.id+'" style="cursor:pointer"><b>'+esc(x.from||"?")+' → '+esc(x.to||"?")+'</b>'
     +'<span>'+pretty(x.date)+(x.time?(" · "+esc(x.time)+(x.arr?(" → "+esc(x.arr)):"")):"")+(x.note?(" · "+esc(x.note)):"")+'</span></div>'
     +'<div class="pr">'+(num(x.price)?eur(num(x.price))+" pp":"—")+'</div>'
     +'<button class="del" data-del="'+x.id+'">✕</button></div>'
@@ -1214,6 +1214,10 @@ function renderTrip(resetTab){
   const trn=document.getElementById("trN");if(trn)trn.textContent=(t.transports||[]).length?((t.transports||[]).length+"×"):"";
   document.querySelectorAll("#trList [data-del]").forEach(b=>b.onclick=()=>{
     t.transports=t.transports.filter(x=>x.id!==b.dataset.del);touch(t);renderTrip();
+  });
+  document.querySelectorAll("#trList [data-edit]").forEach(b=>b.onclick=()=>{
+    const x=(t.transports||[]).find(y=>y.id===b.dataset.edit);
+    if(x)transportForm(t,x);
   });
   const q=encodeURIComponent(t.loc||"");
   document.getElementById("trLinks").className="provs";
@@ -2182,11 +2186,18 @@ async function fsImport(t){
     let added=0;
     (r.flights||[]).forEach(f=>{
       const date=(f.dir==="rit")?(r.date_ret||t.end):(r.date_out||t.start);
-      const dup=t.transports.some(x=>x.type==="flight"&&x.from===f.from&&x.to===f.to&&x.date===date&&x.time===(f.dep||""));
-      if(dup)return;
+      const nota=[(f.fn||""),(f.via?("via "+f.via):"")].filter(Boolean).join(" ");
+      const dup=t.transports.find(x=>x.type==="flight"&&x.from===f.from&&x.to===f.to&&x.date===date&&x.time===(f.dep||""));
+      if(dup){
+        // gia presente: completo i dati che mancano (es. l'orario di arrivo dei vecchi import)
+        let upd=false;
+        if(!dup.arr&&f.arr){dup.arr=f.arr;upd=true;}
+        if(!dup.note&&nota){dup.note=nota;upd=true;}
+        if(upd)added++;
+        return;
+      }
       t.transports.push({id:"x_"+Date.now()+"_"+added,type:"flight",from:f.from||"",to:f.to||"",
-        date:date,time:f.dep||"",arr:f.arr||"",price:"",
-        note:[(f.fn||""),(f.via?("via "+f.via):"")].filter(Boolean).join(" ")});
+        date:date,time:f.dep||"",arr:f.arr||"",price:"",note:nota});
       added++;
     });
     t.transports.sort((a,b)=>((a.date||"")+(a.time||"")).localeCompare((b.date||"")+(b.time||"")));
@@ -2234,25 +2245,41 @@ function tripForm(t,isNew){
   };
 }
 
-function transportForm(t){
+function transportForm(t,ex){
+  const e=ex||null;
   openModal(
-    '<h3>Nuovo spostamento</h3>'
-    +'<label>Tipo</label><select id="xType"><option value="flight">✈️ Volo</option><option value="train">🚆 Treno</option><option value="bus">🚌 Bus</option><option value="car">🚗 Auto</option></select>'
-    +'<div class="grid2"><div><label>Da</label><input id="xFrom" placeholder="BRI"></div><div><label>A</label><input id="xTo" placeholder="MAD"></div></div>'
-    +'<div class="grid2"><div><label>Data</label><input type="date" id="xDate" value="'+esc(t.start)+'"></div><div><label>Partenza</label><input id="xTime" placeholder="06:30"></div></div>'
-    +'<label>Arrivo</label><input id="xArr" placeholder="08:45">'
-    +'<label>Prezzo a persona (€)</label><input type="number" id="xPrice" inputmode="decimal" placeholder="0">'
-    +'<label>Note</label><input id="xNote" placeholder="Es. FR1234, solo andata">'
-    +'<div class="mrow"><button class="btn ghost" id="xCancel">Annulla</button><button class="btn primary" id="xSave">Aggiungi</button></div>'
+    '<h3>'+(e?"Modifica spostamento":"Nuovo spostamento")+'</h3>'
+    +'<label>Tipo</label><select id="xType">'
+    +['flight|✈️ Volo','train|🚆 Treno','bus|🚌 Bus','car|🚗 Auto'].map(o=>{
+        const v=o.split("|")[0];
+        return '<option value="'+v+'"'+((e&&e.type===v)?' selected':'')+'>'+o.split("|")[1]+'</option>';
+      }).join("")
+    +'</select>'
+    +'<div class="grid2"><div><label>Da</label><input id="xFrom" placeholder="BRI" value="'+esc(e?e.from:"")+'"></div>'
+    +'<div><label>A</label><input id="xTo" placeholder="MAD" value="'+esc(e?e.to:"")+'"></div></div>'
+    +'<div class="grid2"><div><label>Data</label><input type="date" id="xDate" value="'+esc(e?e.date:t.start)+'"></div>'
+    +'<div><label>Partenza</label><input id="xTime" placeholder="06:30" value="'+esc(e?e.time:"")+'"></div></div>'
+    +'<label>Arrivo</label><input id="xArr" placeholder="08:45" value="'+esc(e&&e.arr?e.arr:"")+'">'
+    +'<label>Prezzo a persona (€)</label><input type="number" id="xPrice" inputmode="decimal" placeholder="0" value="'+esc(e&&e.price?e.price:"")+'">'
+    +'<label>Note</label><input id="xNote" placeholder="Es. FR1234, solo andata" value="'+esc(e&&e.note?e.note:"")+'">'
+    +'<div class="mrow">'+(e?'<button class="btn danger" id="xDel">Elimina</button>':'')
+    +'<button class="btn ghost" id="xCancel">Annulla</button><button class="btn primary" id="xSave">'+(e?"Salva":"Aggiungi")+'</button></div>'
   );
   mBody.querySelector("#xCancel").onclick=closeModal;
+  const del=mBody.querySelector("#xDel");
+  if(del)del.onclick=()=>{
+    if(!confirm("Eliminare questo spostamento?"))return;
+    t.transports=t.transports.filter(y=>y.id!==e.id);touch(t);closeModal();renderTrip();
+  };
   mBody.querySelector("#xSave").onclick=()=>{
-    t.transports=t.transports||[];
-    t.transports.push({id:"x_"+Date.now(),type:mBody.querySelector("#xType").value,
+    const vals={type:mBody.querySelector("#xType").value,
       from:mBody.querySelector("#xFrom").value.trim(),to:mBody.querySelector("#xTo").value.trim(),
       date:mBody.querySelector("#xDate").value,time:mBody.querySelector("#xTime").value.trim(),
       arr:mBody.querySelector("#xArr").value.trim(),
-      price:mBody.querySelector("#xPrice").value,note:mBody.querySelector("#xNote").value.trim()});
+      price:mBody.querySelector("#xPrice").value,note:mBody.querySelector("#xNote").value.trim()};
+    t.transports=t.transports||[];
+    if(e)Object.assign(e,vals);
+    else t.transports.push(Object.assign({id:"x_"+Date.now()},vals));
     t.transports.sort((a,b)=>((a.date||"")+(a.time||"")).localeCompare((b.date||"")+(b.time||"")));
     touch(t);closeModal();renderTrip();
   };
