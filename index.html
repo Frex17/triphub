@@ -1207,7 +1207,7 @@ function renderTrip(resetTab){
   document.getElementById("trList").innerHTML=(t.transports||[]).map(x=>
     '<div class="row"><div class="ic">'+(icons[x.type]||"🧭")+'</div>'
     +'<div class="rx"><b>'+esc(x.from||"?")+' → '+esc(x.to||"?")+'</b>'
-    +'<span>'+pretty(x.date)+(x.time?(" · "+esc(x.time)):"")+(x.note?(" · "+esc(x.note)):"")+'</span></div>'
+    +'<span>'+pretty(x.date)+(x.time?(" · "+esc(x.time)+(x.arr?(" → "+esc(x.arr)):"")):"")+(x.note?(" · "+esc(x.note)):"")+'</span></div>'
     +'<div class="pr">'+(num(x.price)?eur(num(x.price))+" pp":"—")+'</div>'
     +'<button class="del" data-del="'+x.id+'">✕</button></div>'
   ).join("")||'<div class="hint">Ancora nessuno spostamento.</div>';
@@ -1773,8 +1773,13 @@ function renderRecap(t){
   let html="";
   const trs=(t.transports||[]);
   if(trs.length){
-    html+=trs.map(x=>'<div style="font-size:13.5px;padding:5px 0">'+(icons[x.type]||"\uD83E\uDDED")+" "+esc(x.from||"?")+" \u2192 "+esc(x.to||"?")
-      +" \u00B7 "+pretty(x.date)+(x.time?(" "+esc(x.time)):"")+(x.note?(" \u00B7 "+esc(x.note)):"")+'</div>').join("");
+    html+=trs.map(x=>{
+      const ore=x.time?(esc(x.time)+(x.arr?(" \u2192 "+esc(x.arr)):"")):"";
+      return '<div style="font-size:13.5px;padding:6px 0">'
+        +'<div>'+(icons[x.type]||"\uD83E\uDDED")+" <b>"+esc(x.from||"?")+" \u2192 "+esc(x.to||"?")+"</b></div>"
+        +'<div style="color:var(--muted);font-size:12.5px;margin-top:2px">'
+        +pretty(x.date)+(ore?(" \u00B7 "+ore):"")+(x.note?(" \u00B7 "+esc(x.note)):"")+'</div></div>';
+    }).join("");
   }else{
     html+='<div class="hint">Nessuno spostamento ancora.</div>';
   }
@@ -2180,7 +2185,8 @@ async function fsImport(t){
       const dup=t.transports.some(x=>x.type==="flight"&&x.from===f.from&&x.to===f.to&&x.date===date&&x.time===(f.dep||""));
       if(dup)return;
       t.transports.push({id:"x_"+Date.now()+"_"+added,type:"flight",from:f.from||"",to:f.to||"",
-        date:date,time:f.dep||"",price:"",note:[(f.fn||""),(f.via?("via "+f.via):"")].filter(Boolean).join(" ")});
+        date:date,time:f.dep||"",arr:f.arr||"",price:"",
+        note:[(f.fn||""),(f.via?("via "+f.via):"")].filter(Boolean).join(" ")});
       added++;
     });
     t.transports.sort((a,b)=>((a.date||"")+(a.time||"")).localeCompare((b.date||"")+(b.time||"")));
@@ -2233,7 +2239,8 @@ function transportForm(t){
     '<h3>Nuovo spostamento</h3>'
     +'<label>Tipo</label><select id="xType"><option value="flight">✈️ Volo</option><option value="train">🚆 Treno</option><option value="bus">🚌 Bus</option><option value="car">🚗 Auto</option></select>'
     +'<div class="grid2"><div><label>Da</label><input id="xFrom" placeholder="BRI"></div><div><label>A</label><input id="xTo" placeholder="MAD"></div></div>'
-    +'<div class="grid2"><div><label>Data</label><input type="date" id="xDate" value="'+esc(t.start)+'"></div><div><label>Ora</label><input id="xTime" placeholder="06:30"></div></div>'
+    +'<div class="grid2"><div><label>Data</label><input type="date" id="xDate" value="'+esc(t.start)+'"></div><div><label>Partenza</label><input id="xTime" placeholder="06:30"></div></div>'
+    +'<label>Arrivo</label><input id="xArr" placeholder="08:45">'
     +'<label>Prezzo a persona (€)</label><input type="number" id="xPrice" inputmode="decimal" placeholder="0">'
     +'<label>Note</label><input id="xNote" placeholder="Es. FR1234, solo andata">'
     +'<div class="mrow"><button class="btn ghost" id="xCancel">Annulla</button><button class="btn primary" id="xSave">Aggiungi</button></div>'
@@ -2244,6 +2251,7 @@ function transportForm(t){
     t.transports.push({id:"x_"+Date.now(),type:mBody.querySelector("#xType").value,
       from:mBody.querySelector("#xFrom").value.trim(),to:mBody.querySelector("#xTo").value.trim(),
       date:mBody.querySelector("#xDate").value,time:mBody.querySelector("#xTime").value.trim(),
+      arr:mBody.querySelector("#xArr").value.trim(),
       price:mBody.querySelector("#xPrice").value,note:mBody.querySelector("#xNote").value.trim()});
     t.transports.sort((a,b)=>((a.date||"")+(a.time||"")).localeCompare((b.date||"")+(b.time||"")));
     touch(t);closeModal();renderTrip();
